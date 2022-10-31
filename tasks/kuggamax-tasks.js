@@ -113,13 +113,13 @@ task('create-item', 'Create a new item')
       await giveAllowance(token, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)
     }
 
-    await kuggamax.createItem(lab)
+    await kuggamax.createItem(lab, title)
 
     console.log('Item created')
   })
 
 
-task('mint', 'Create a new item')
+task('mint', 'Mint an ERC1155 token for the item')
   .addParam('item', 'The ID of the item')
   .setAction(async ({ item }, hre) => {
     // Make sure everything is compiled
@@ -169,8 +169,53 @@ task('remove-member', 'Removes a member from the specified lab')
     console.log('Member removed')
   })
 
+task('deposit', 'Deposit native tokens to get some KMC back')
+  .addParam('amount', "The amount of native token to deposit")
+  .setAction(async ({ amount }, hre) => {
+    // Make sure everything is compiled
+    await run('compile')
 
-task('kuggamax-debug', 'Shows poll debug info')
+    const kuggamax = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined) {
+      return
+    }
+    const token = await getKuggaToken(hre)
+    if (token === undefined) {
+      return
+    }
+
+    await kuggamax.deposit({ value : amount })
+
+    const [sender] = await hre.ethers.getSigners();
+    console.log('amount deposited, balance: ', (await token.balanceOf(sender.address)).toString())
+  })
+
+
+task('withdraw', 'Withdraw native tokens by transferring some KMC')
+  .addParam('amount', "The amount of native token to withdraw")
+  .setAction(async ({ amount }, hre) => {
+    // Make sure everything is compiled
+    await run('compile')
+
+    const kuggamax = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined) {
+      return
+    }
+    const token = await getKuggaToken(hre)
+    if (token === undefined) {
+      return
+    }
+
+    const [sender] = await hre.ethers.getSigners();
+
+    await token.approve(kuggamax.address, amount)
+    await kuggamax.withdraw(amount)
+
+    console.log('amount withdrawn, balance: ', (await token.balanceOf(sender.address)).toString())
+  })
+
+
+task('debug', 'Shows debug info')
   .setAction(async (_, hre) => {
 
     const kuggamax = await getDeployedKuggamax(hre)

@@ -217,6 +217,7 @@ contract Kuggamax {
     function mint(uint256 itemId, uint256 amount) public noReentrancy payable {
         require(itemId < _itemArray.length, "Kuggamax::mint - invalid item id");
         require(msg.sender == _itemArray[itemId].owner, "Kuggamax::mint - not item owner");
+        require(!_kugga1155.exists(itemId), "Kuggamax::mint - token existing");
         require(msg.value >= 1000000000000, "Kuggamax::mint - paid too low");
 //        // collect deposit from sender and store it
 //        if (_itemDeposit > 0) {
