@@ -12,13 +12,14 @@ contract Kuggamax {
     using SafeMath for uint256;
 
     event LabCreated (
-        uint256 LabId
+        uint64 LabId
     );
 
     event ItemCreated (
-        address indexed applicant,
-        uint256 indexed labId,
-        uint256 itemId
+        address indexed creator,
+        uint64 indexed labId,
+        uint64 itemId,
+        bytes32 itemHash
     );
 
     event Deposit (
@@ -31,38 +32,27 @@ contract Kuggamax {
         uint256 amount
     );
 
-    event KeeperWithdraw (
-        address donor,
-        uint256 sharesBurned,
-        address keeper
-    );
-
     event MemberAdded (
         address owner,
-        uint256 labId,
+        uint64 labId,
         address[] members
     );
 
     event MemberRemoved (
         address owner,
-        uint256 labId,
+        uint64 labId,
         address[] members
     );
 
     event ItemMinted (
-        uint256 sharesToMint,
-        address recipient,
-        uint256 totalKuggamaxShares
-    );
-
-    event SharesBurned (
-        uint256 sharesToBurn,
-        address recipient,
-        uint256 totalKuggamaxShares
+        address owner,
+        uint64 tokenId,
+        uint256 amount
     );
 
     uint256 private _labDeposit; // default = 1 Token
     uint256 private _itemDeposit; // default = 0.01 Token
+    uint256 private _mintDeposit; // default = 0.1 Token
 
     IERC20 private _kuggaToken; // approved token contract reference
 
@@ -83,7 +73,7 @@ contract Kuggamax {
     }
     struct ItemEntry {
         address owner; // who created the item
-        string title; // the item title - plaintext
+        bytes32 hash;   // the hash of the item, unique
     }
 
 
@@ -104,7 +94,7 @@ contract Kuggamax {
 //        _;
 //    }
 
-    constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_) {
+    constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) {
         require(erc20 != address(0), "Kuggamax::constructor - kuggaToken cannot be 0");
         require(labDeposit_ > 0, "Kuggamax::constructor - labDeposit cannot be 0");
 
@@ -114,19 +104,10 @@ contract Kuggamax {
 
         _labDeposit = labDeposit_;
         _itemDeposit = itemDeposit_;
+        _mintDeposit = mintDeposit_;
 
         _labArray.push();
         _itemArray.push();
-    }
-
-    function activate(uint256 initialTokens, uint256 initialKuggamaxShares) public noReentrancy {
-//        require(totalKuggamaxShares == 0, "Kuggamax: Already active");
-//
-//        require(
-//            _kuggaToken.transferFrom(msg.sender, address(this), initialTokens),
-//            "Kuggamax: Initial tokens transfer failed"
-//        );
-//        _mintSharesForAddress(initialKuggamaxShares, msg.sender);
     }
 
     function kuggaToken() public view returns (address) {
@@ -141,17 +122,20 @@ contract Kuggamax {
     function itemDeposit() public view returns (uint256) {
         return _itemDeposit;
     }
+    function mintDeposit() public view returns (uint256) {
+        return _mintDeposit;
+    }
 
-    function getLab(uint256 labId) public view returns (LabEntry memory) {
+    function getLab(uint64 labId) public view returns (LabEntry memory) {
         require(labId < _labArray.length, "Kuggamax::getLab - invalid labId");
 
         Lab storage lab = _labArray[labId];
         return lab.entry;
     }
-    function getLabCount() public view returns (uint256) {
-        return _labArray.length;
+    function getLabCount() public view returns (uint64) {
+        return uint64(_labArray.length);
     }
-    function getItem(uint256 itemId) public view returns (ItemEntry memory) {
+    function getItem(uint64 itemId) public view returns (ItemEntry memory) {
         require(itemId < _itemArray.length, "Kuggamax::getItem - invalid itemId");
 
         ItemEntry memory item = _itemArray[itemId];
@@ -171,26 +155,26 @@ contract Kuggamax {
         lab.members[msg.sender] = true;
 
         uint256 labIndex = _labArray.length.sub(1);
-        emit LabCreated(labIndex);
+        emit LabCreated(uint64(labIndex));
     }
 
-    function createItem(uint256 labId, string memory title) public noReentrancy {
+    function createItem(uint64 labId, bytes32 hash) public noReentrancy {
+        require(labId < _labArray.length, "Kuggamax::createItem - invalid labId");
+        require(_labArray[labId].members[msg.sender], "Kuggamax::createItem - not a member of the lab");
         // collect deposit from sender and store it
         if (_itemDeposit > 0) {
             require(_kuggaToken.transferFrom(msg.sender, address(this), _itemDeposit), "Kuggamax::createItem - deposit token transfer failed");
         }
-        require(labId < _labArray.length, "Kuggamax::createItem - invalid labId");
-        require(_labArray[labId].members[msg.sender], "Kuggamax::createItem - not a member of the lab");
 
         ItemEntry storage item = _itemArray.push();
         item.owner = msg.sender;
-        item.title = title;
+        item.hash = hash;
 
         uint256 itemIndex = _itemArray.length.sub(1);
-        emit ItemCreated(msg.sender, labId, itemIndex);
+        emit ItemCreated(msg.sender, labId, uint64(itemIndex), hash);
     }
 
-    function addMembers(uint256 labId, address[] calldata newMembers) external noReentrancy {
+    function addMembers(uint64 labId, address[] calldata newMembers) external noReentrancy {
         require(labId < _labArray.length, "Kuggamax::addMembers - invalid labId");
         require(_labArray[labId].entry.owner == msg.sender, "Kuggamax::addMembers - not the owner of the lab");
 
@@ -202,7 +186,7 @@ contract Kuggamax {
         emit MemberAdded(lab.entry.owner, labId, newMembers);
     }
 
-    function removeMembers(uint256 labId, address[] calldata membersToRemove) external noReentrancy {
+    function removeMembers(uint64 labId, address[] calldata membersToRemove) external noReentrancy {
         require(labId < _labArray.length, "Kuggamax::removeMembers - invalid labId");
         require(_labArray[labId].entry.owner == msg.sender, "Kuggamax::addMembers - not the owner of the lab");
 
@@ -214,17 +198,20 @@ contract Kuggamax {
         emit MemberRemoved(lab.entry.owner, labId, membersToRemove);
     }
 
-    function mint(uint256 itemId, uint256 amount) public noReentrancy payable {
-        require(itemId < _itemArray.length, "Kuggamax::mint - invalid item id");
-        require(msg.sender == _itemArray[itemId].owner, "Kuggamax::mint - not item owner");
-        require(!_kugga1155.exists(itemId), "Kuggamax::mint - token existing");
-        require(msg.value >= 1000000000000, "Kuggamax::mint - paid too low");
-//        // collect deposit from sender and store it
-//        if (_itemDeposit > 0) {
-//            require(_kuggaToken.transferFrom(msg.sender, address(this), _itemDeposit), "Kuggamax::createItem - deposit token transfer failed");
-//        }
+    function mint(uint64 itemId, uint256 amount) public noReentrancy {
+        address operator = msg.sender;
 
-        _kugga1155.mint(_itemArray[itemId].owner, itemId, amount, new bytes(itemId));
+        require(itemId < _itemArray.length, "Kuggamax::mint - invalid item id");
+        require(operator == _itemArray[itemId].owner, "Kuggamax::mint - not item owner");
+        require(!_kugga1155.exists(itemId), "Kuggamax::mint - token existing");
+        // collect deposit from sender and store it
+        if (_mintDeposit > 0) {
+            require(_kuggaToken.transferFrom(operator, address(this), _mintDeposit), "Kuggamax::mint - mint token transfer failed");
+        }
+
+        _kugga1155.mint(operator, itemId, amount, new bytes(itemId));
+
+        emit ItemMinted(operator, itemId, amount);
     }
 
 

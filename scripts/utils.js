@@ -2,6 +2,15 @@
 // These functions are meant to be run from tasks, so the
 // RuntimeEnvironment is available in the global scope.
 
+
+/**
+ * Returns the address of the Kuggamax as set in the config, or undefined if
+ * it hasn't been set.
+ */
+function getKuggamaxAddress () {
+  return config.networks[network.name].deployedContracts.kuggamax
+}
+
 /**
  * Returns the deployed instance of the Kuggamax, or undefined if its
  * address hasn't been set in the config.
@@ -12,47 +21,14 @@ async function getDeployedKuggamax (hre) {
     console.error(`Please, set the kuggamax's address in config`)
     return
   }
-  const Kuggamax = await hre.ethers.getContractAt('Kuggamax', kuggamaxAddress)
-  return Kuggamax
+  const kuggamax = await hre.ethers.getContractAt('Kuggamax', kuggamaxAddress)
+  const erc20Address = await kuggamax.kuggaToken()
+  const kmcToken = await hre.ethers.getContractAt('IERC20', erc20Address)
+  const erc1155Address = await kuggamax.kugga1155()
+  const itemToken = await hre.ethers.getContractAt('Token1155', erc1155Address)
+  return { kuggamax, kmcToken, itemToken }
 }
 
-/**
- * Returns the deployed instance of the Kuggamax's approved token, or
- * undefined if the DAO's address hasn't been set in the config.
- */
-async function getKuggaToken (hre) {
-  const kuggamax = await getDeployedKuggamax(hre)
-  if (kuggamax === undefined) {
-    return
-  }
-
-  const tokenAddress = await kuggamax.kuggaToken()
-  const IERC20 = await hre.ethers.getContractAt('IERC20', tokenAddress)
-  return IERC20
-}
-
-/**
- * Returns the deployed instance of the Kuggamax's approved token, or
- * undefined if the DAO's address hasn't been set in the config.
- */
-async function getKuggaToken1155 (hre) {
-  const kuggamax = await getDeployedKuggamax(hre)
-  if (kuggamax === undefined) {
-    return
-  }
-
-  const tokenAddress = await kuggamax.kugga1155()
-  const IERC1155 = await hre.ethers.getContractAt('Token1155', tokenAddress)
-  return IERC1155
-}
-
-/**
- * Returns the address of the Kuggamax as set in the config, or undefined if
- * it hasn't been set.
- */
-function getKuggamaxAddress () {
-  return config.networks[network.name].deployedContracts.kuggamax
-}
 
 async function giveAllowance (tokenContract, allowanceGiver, receiverContract, amount) {
   return tokenContract.approve(receiverContract.address, amount, { from: allowanceGiver })
@@ -76,8 +52,6 @@ async function getFirstAccount () {
 
 module.exports = {
   getDeployedKuggamax,
-  getKuggaToken,
-  getKuggaToken1155,
   getKuggamaxAddress,
   giveAllowance,
   hasEnoughAllowance,

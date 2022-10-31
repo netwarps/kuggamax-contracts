@@ -39,7 +39,7 @@ module.exports = {
   networks: {
     localhost: {
       deployedContracts: {
-        kuggamax: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
+        kuggamax: '0x720472c8ce72c2A2D711333e064ABD3E6BbEAdd3',
       }
     },
     ropsten: {

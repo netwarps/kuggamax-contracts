@@ -2,14 +2,14 @@
 const {
   getDeployedKuggamax,
   getFirstAccount,
-  getKuggaToken,
   hasEnoughTokens,
   hasEnoughAllowance,
   giveAllowance,
-  getKuggamaxAddress, getKuggaToken1155
 } = require('../scripts/utils')
 const deploymentParams = require("./deployment-params");
+
 const Confirm = require("prompt-confirm");
+const {sha256, randomBytes} = require("ethers/lib/utils");
 
 task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
   .setAction(async (_, hre) => {
@@ -21,9 +21,9 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
       'Deployment parameters:\n',
       '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
       '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
+      '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
     )
 
-    const Confirm = require('prompt-confirm')
     const prompt = new Confirm('Please confirm that the deployment parameters are correct')
     const confirmation = await prompt.run()
 
@@ -32,9 +32,10 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
     }
 
     const [owner] = await hre.ethers.getSigners()
+    const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
 
-    const Token = await hre.ethers.getContractFactory("Token");
-    const token = await Token.deploy('1000000000000000000000000');
+    const Token = await hre.ethers.getContractFactory("Token20");
+    const token = await Token.deploy(supply);
 
     console.log("Token address:", token.address);
     console.log("Token supply:", await token.totalSupply());
@@ -45,11 +46,15 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
     const kuggamax = await Kuggamax.deploy(
       token.address,
       deploymentParams.LAB_DEPOSIT,
-      deploymentParams.ITEM_DEPOSIT
+      deploymentParams.ITEM_DEPOSIT,
+      deploymentParams.MINT_DEPOSIT,
     )
+
+    await token.transfer(kuggamax.address, supply)
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
+    console.log("KMC in Kuggamax:", hre.ethers.utils.formatEther(await token.balanceOf(kuggamax.address)));
     console.log("Set this address in hardhat.config.js's networks section to use the other tasks")
   })
 
@@ -59,25 +64,20 @@ task('create-lab', 'Create a new lab')
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
     const [sender] = await hre.ethers.getSigners();
 
-    if (!await hasEnoughTokens(token, sender.address, deploymentParams.LAB_DEPOSIT)) {
+    if (!await hasEnoughTokens(kmcToken, sender.address, deploymentParams.LAB_DEPOSIT)) {
       console.error("You don't have enough KMC tokens")
       return
     }
 
-    if (!await hasEnoughAllowance(token, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)) {
-      await giveAllowance(token, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)
+    if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)) {
+      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)
     }
 
     await kuggamax.createLab(description)
@@ -87,33 +87,32 @@ task('create-lab', 'Create a new lab')
 
 task('create-item', 'Create a new item')
   .addParam('lab', 'The ID of the lab')
-  .addParam('title', 'The title of the item')
-  .setAction(async ({ lab, title }, hre) => {
+  .addParam('hash', 'The Hash value of the item', undefined, types.Bytes, true)
+  .setAction(async ({ lab, hash }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
     const [sender] = await hre.ethers.getSigners();
 
-    if (!await hasEnoughTokens(token, sender.address, deploymentParams.ITEM_DEPOSIT)) {
+    if (!hash) {
+      hash = sha256(randomBytes(32))
+    }
+
+    if (!await hasEnoughTokens(kmcToken, sender.address, deploymentParams.ITEM_DEPOSIT)) {
       console.error("You don't have enough KMC tokens")
       return
     }
 
-    if (!await hasEnoughAllowance(token, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)) {
-      await giveAllowance(token, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)
+    if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)) {
+      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)
     }
 
-    await kuggamax.createItem(lab, title)
+    await kuggamax.createItem(lab, hash)
 
     console.log('Item created')
   })
@@ -121,20 +120,28 @@ task('create-item', 'Create a new item')
 
 task('mint', 'Mint an ERC1155 token for the item')
   .addParam('item', 'The ID of the item')
-  .setAction(async ({ item }, hre) => {
+  .addParam('amount', 'The amount of the token', 100, types.int)
+  .setAction(async ({ item, amount }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
-    await kuggamax.mint(item, 100, { value : 1000000000000 })
+    const [sender] = await hre.ethers.getSigners();
+
+    if (!await hasEnoughTokens(kmcToken, sender.address, deploymentParams.MINT_DEPOSIT)) {
+      console.error("You don't have enough KMC tokens")
+      return
+    }
+
+    if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.MINT_DEPOSIT)) {
+      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.MINT_DEPOSIT)
+    }
+
+    await kuggamax.mint(item, amount)
 
     console.log('Item minted')
   })
@@ -145,8 +152,8 @@ task('add-member', 'Adds a member to the specified lab')
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
@@ -160,8 +167,8 @@ task('remove-member', 'Removes a member from the specified lab')
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
@@ -170,64 +177,51 @@ task('remove-member', 'Removes a member from the specified lab')
   })
 
 task('deposit', 'Deposit native tokens to get some KMC back')
-  .addParam('amount', "The amount of native token to deposit")
+  .addParam('amount', "The amount of native token to deposit, in ETH")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
-    await kuggamax.deposit({ value : amount })
+    await kuggamax.deposit({ value : hre.ethers.utils.parseEther(amount) })
 
     const [sender] = await hre.ethers.getSigners();
-    console.log('amount deposited, balance: ', (await token.balanceOf(sender.address)).toString())
+    console.log('amount deposited, balance: ', hre.ethers.utils.formatEther(await kmcToken.balanceOf(sender.address)))
+    console.log('native balance: ', hre.ethers.utils.formatEther(await sender.getBalance()))
   })
 
 
 task('withdraw', 'Withdraw native tokens by transferring some KMC')
-  .addParam('amount', "The amount of native token to withdraw")
+  .addParam('amount', "The amount of native token to withdraw, in KMC")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
     const [sender] = await hre.ethers.getSigners();
 
-    await token.approve(kuggamax.address, amount)
-    await kuggamax.withdraw(amount)
+    const kmcAmount = hre.ethers.utils.parseEther(amount)
+    await kmcToken.approve(kuggamax.address, kmcAmount)
+    await kuggamax.withdraw(kmcAmount)
 
-    console.log('amount withdrawn, balance: ', (await token.balanceOf(sender.address)).toString())
+    console.log('amount withdrawn, balance: ', hre.ethers.utils.formatEther((await kmcToken.balanceOf(sender.address))))
+    console.log('native balance: ', hre.ethers.utils.formatEther(await sender.getBalance()))
   })
 
 
 task('debug', 'Shows debug info')
   .setAction(async (_, hre) => {
 
-    const kuggamax = await getDeployedKuggamax(hre)
-    if (kuggamax === undefined) {
-      return
-    }
-    const token = await getKuggaToken(hre)
-    if (token === undefined) {
-      return
-    }
-    const t1155 = await getKuggaToken1155(hre)
-    if (t1155 === undefined) {
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
       return
     }
 
@@ -249,21 +243,20 @@ task('debug', 'Shows debug info')
 
     const [sender, sender1] = await hre.ethers.getSigners();
 
-    console.log("Token address:", token.address);
-    console.log("Token supply:", await token.totalSupply());
+    console.log("Token address:", kmcToken.address);
+    console.log("Token supply:", hre.ethers.utils.formatEther(await kmcToken.totalSupply()))
 
     const k0 = await sender.getBalance()
-    console.log('native balance of sender', k0.toString())
+    console.log('native balance of sender', hre.ethers.utils.formatEther(k0))
 
     const k1 = await sender.provider.getBalance(kuggamax.address)
-    console.log('native balance of kuggamax', k1.toString())
+    console.log('native balance of kuggamax', hre.ethers.utils.formatEther(k1))
 
-    console.log('balance0 1155', (await t1155.balanceOf(sender.address, 1)).toString())
+    console.log('balance0 1155', (await itemToken.balanceOf(sender.address, 1)).toString())
 
 
-    console.log('balance0', (await token.balanceOf(sender.address)).toString())
-    console.log('balance1', (await token.balanceOf(sender1.address)).toString())
-
-    console.log('balance of Kuggamax', (await token.balanceOf(kuggamax.address)).toString())
-    // console.log('balance of Guild', (await token.balanceOf(guildAddress)).toString())
+    console.log('KMC balance0', hre.ethers.utils.formatEther((await kmcToken.balanceOf(sender.address))))
+    console.log('KMC balance1', hre.ethers.utils.formatEther((await kmcToken.balanceOf(sender1.address))))
+    console.log('KMC balance of Kuggamax', hre.ethers.utils.formatEther((await kmcToken.balanceOf(kuggamax.address))))
+    // console.log('balance of Guild', hre.ethers.utils.formatEther((await kmcToken.balanceOf(guildAddress))))
   })

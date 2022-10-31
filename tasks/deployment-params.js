@@ -9,5 +9,8 @@ module.exports.DILUTION_BOUND = 3
 module.exports.PROCESSING_REWARD = '10000000000'
 
 
-module.exports.LAB_DEPOSIT = '1000000000000000000' // Large numbers should be string or big numbers
-module.exports.ITEM_DEPOSIT = '10000000000000000' // Large numbers should be string or big numbers
+module.exports.LAB_DEPOSIT  = '1000000000000000000' // Large numbers should be string or big numbers
+module.exports.ITEM_DEPOSIT =   '10000000000000000' // Large numbers should be string or big numbers
+module.exports.MINT_DEPOSIT =  '100000000000000000' // Large numbers should be string or big numbers
+
+module.exports.INITIAL_KMC_SUPLY =  '1000000000' // Large numbers should be string or big numbers
