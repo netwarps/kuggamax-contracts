@@ -66,26 +66,26 @@ This project includes Buidler tasks for deploying and using DAOs and Pools.
 
 Follow this instructions to deploy a new DAO:
 
-1. Edit `buidler.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
+1. Edit `hardhat.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
 2. Edit `deployment-params.js`, setting your desired deployment parameters.
 3. Run `npx buidler moloch-deploy --network mainnet`
-4. Edit `buidler.config.js`, setting the address of the DAO in `networks.mainnet.deployedContracts.moloch`.
+4. Edit `hardhat.config.js`, setting the address of the DAO in `networks.mainnet.deployedContracts.moloch`.
 
 #### Deploying a new Pool
 
 Follow this instructions to deploy a new Pool:
 
-1. Edit `buidler.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
-2. Make sure you have the right address in `buidler.config.js`'s `networks.mainnet.deployedContracts.moloch` field.
+1. Edit `hardhat.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
+2. Make sure you have the right address in `hardhat.config.js`'s `networks.mainnet.deployedContracts.moloch` field.
 3. Run `npx buidler pool-deploy --network mainnet --shares <shares> --tokens <tokens>` with the initial amount of tokens you want to donate to the pool, and how many shares you want in return.
 
 ### Interacting with the smart contracts
 
 This project has tasks to work with DAOs and Pools. To use them, you should first follow this instructions:
 
-1. Edit `buidler.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
-2. Make sure you have the right address in `buidler.config.js`'s `networks.mainnet.deployedContracts.moloch` field.
-3. If you want to use a Pool, make sure you have the right address in `buidler.config.js`'s `networks.mainnet.deployedContracts.pool` field.
+1. Edit `hardhat.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
+2. Make sure you have the right address in `hardhat.config.js`'s `networks.mainnet.deployedContracts.moloch` field.
+3. If you want to use a Pool, make sure you have the right address in `hardhat.config.js`'s `networks.mainnet.deployedContracts.pool` field.
 
 After following those instructions, you can run `npx buidler` to get a list with all the tasks:
 

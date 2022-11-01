@@ -187,7 +187,24 @@ task('deposit', 'Deposit native tokens to get some KMC back')
       return
     }
 
+    let depositEvent = new Promise((resolve, reject) => {
+      kuggamax.on('Deposit', (sender, amount) => {
+
+        resolve({
+          sender: sender,
+          amount: amount
+        });
+      });
+
+      setTimeout(() => {
+        reject(new Error('timeout'));
+      }, 60000)
+    });
+
     await kuggamax.deposit({ value : hre.ethers.utils.parseEther(amount) })
+
+    let event = await depositEvent;
+    console.log('deposit... done!', event)
 
     const [sender] = await hre.ethers.getSigners();
     console.log('amount deposited, balance: ', hre.ethers.utils.formatEther(await kmcToken.balanceOf(sender.address)))

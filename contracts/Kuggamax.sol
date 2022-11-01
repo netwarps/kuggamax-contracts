@@ -3,13 +3,11 @@
 
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./GuildBank.sol";
 import "./Token1155.sol";
 
 contract Kuggamax {
-    using SafeMath for uint256;
 
     event LabCreated (
         uint64 LabId
@@ -154,7 +152,7 @@ contract Kuggamax {
         lab.entry.description = description;
         lab.members[msg.sender] = true;
 
-        uint256 labIndex = _labArray.length.sub(1);
+        uint256 labIndex = _labArray.length - 1;
         emit LabCreated(uint64(labIndex));
     }
 
@@ -170,7 +168,7 @@ contract Kuggamax {
         item.owner = msg.sender;
         item.hash = hash;
 
-        uint256 itemIndex = _itemArray.length.sub(1);
+        uint256 itemIndex = _itemArray.length - 1;
         emit ItemCreated(msg.sender, labId, uint64(itemIndex), hash);
     }
 
@@ -188,7 +186,7 @@ contract Kuggamax {
 
     function removeMembers(uint64 labId, address[] calldata membersToRemove) external noReentrancy {
         require(labId < _labArray.length, "Kuggamax::removeMembers - invalid labId");
-        require(_labArray[labId].entry.owner == msg.sender, "Kuggamax::addMembers - not the owner of the lab");
+        require(_labArray[labId].entry.owner == msg.sender, "Kuggamax::removeMembers - not the owner of the lab");
 
         Lab storage lab = _labArray[labId];
         for (uint256 i = 0; i < membersToRemove.length; i++) {
@@ -222,7 +220,7 @@ contract Kuggamax {
         uint256 amount = msg.value;
 
         require(
-            _kuggaToken.transfer(msg.sender, amount),
+            _kuggaToken.transfer(msg.sender, amount * 1000),
             "Kuggamax: Deposit transfer failed"
         );
 
@@ -237,7 +235,7 @@ contract Kuggamax {
         // collect token from sender and store it
         require(_kuggaToken.transferFrom(msg.sender, address(this), amount), "Kuggamax::withdraw - withdraw token transfer failed");
 
-        payable(msg.sender).transfer(amount);
+        payable(msg.sender).transfer(amount / 1000);
 
         emit Withdraw(
             msg.sender,

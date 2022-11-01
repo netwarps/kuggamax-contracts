@@ -39,7 +39,7 @@ module.exports = {
   networks: {
     localhost: {
       deployedContracts: {
-        kuggamax: '0x720472c8ce72c2A2D711333e064ABD3E6BbEAdd3',
+        kuggamax: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
       }
     },
     ropsten: {
@@ -50,9 +50,8 @@ module.exports = {
       url: `https://rpc-mumbai.maticvigil.com/`,
       accounts: [`0x${MATIC_PRIVATE_KEY}`],
       deployedContracts: {
-        kuggamax: '0x00d74e2989Ea6931535B588A274414184F41E4D3',
+        kuggamax: '0xdf6B79624a2fc9C84ca7029e677ab482cF4BE2A0',
       }
     },
   }
 };
-
