@@ -147,8 +147,9 @@ task('mint', 'Mint an ERC1155 token for the item')
   })
 
 task('add-member', 'Adds a member to the specified lab')
+  .addParam('lab', "The lab id")
   .addParam('member', "The member's address")
-  .setAction(async ({ member }, hre) => {
+  .setAction(async ({ lab,member }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
@@ -157,13 +158,14 @@ task('add-member', 'Adds a member to the specified lab')
       return
     }
 
-    await kuggamax.addMembers([member])
+    await kuggamax.addMembers(lab,[member])
     console.log('Member added')
   })
 
 task('remove-member', 'Removes a member from the specified lab')
+ .addParam('lab', "The lab id")
   .addParam('member', "The member's address")
-  .setAction(async ({ member }, hre) => {
+  .setAction(async ({lab, member }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
@@ -172,7 +174,7 @@ task('remove-member', 'Removes a member from the specified lab')
       return
     }
 
-    await kuggamax.removeKeepers([member])
+    await kuggamax.removeMembers(lab,[member])
     console.log('Member removed')
   })
 
