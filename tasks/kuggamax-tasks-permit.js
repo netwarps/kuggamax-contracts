@@ -9,7 +9,6 @@ const {
   buildDomain
 } = require('../scripts/utils')
 const deploymentParams = require("./deployment-params");
-const {BigNumber} = require("ethers");
 
 const version = "1";
 
@@ -126,15 +125,15 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
 
     const domain = buildDomain(name, version, chainId, kuggamax.address)
     const types = {
-      PermitCreateLab: [  //PermitCreateLab(address owner,string description,uint256 nonce)
-        {name: 'owner', type: 'address'},
+      PermitCreateLab: [  //PermitCreateLab(string description,address owner,uint256 nonce)
         {name: 'description', type: 'string'},
+        {name: 'owner', type: 'address'},
         {name: 'nonce', type: 'uint256'}
       ]
     }
     const data = {
-      owner: owner.address,
       description: description,
+      owner: owner.address,
       nonce: nonce,
     }
     // console.log('domain:', domain)
@@ -149,11 +148,11 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     //test method and Event with argument
     const newLabId = await kuggamax.getLabCount()
     console.log('newLabId:', newLabId)
-    await expect(kuggamax.connect(caller).permitCreateLab(owner.address, description, v, r, s))
+    await expect(kuggamax.connect(caller).permitCreateLab(description, owner.address, v, r, s))
       .to.emit(kuggamax, "LabCreated").withArgs(newLabId)
 
     // //test method and get receipt
-    // const receipt = await kuggamax.connect(caller).permitCreateLab(owner.address, description, v, r, s)
+    // const receipt = await kuggamax.connect(caller).permitCreateLab(description, owner.address, v, r, s))
     // await receipt.wait()
     // console.log('receipt:', receipt)
 
@@ -209,17 +208,17 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
 
     const domain = buildDomain(name, version, chainId, kuggamax.address)
     const types = {
-      PermitCreateItem: [  //PermitCreateItem(address owner,uint64 labId,bytes32 hash,uint256 nonce)
-        {name: 'owner', type: 'address'},
+      PermitCreateItem: [  //PermitCreateItem(uint64 labId,bytes32 hash,address owner,uint256 nonce)
         {name: 'labId', type: 'uint64'},
         {name: 'hash', type: 'bytes32'},
+        {name: 'owner', type: 'address'},
         {name: 'nonce', type: 'uint256'}
       ]
     }
     const data = {
-      owner: owner.address,
       labId: labId,
       hash: itemHash,
+      owner: owner.address,
       nonce: nonce,
     }
     // console.log('domain:', domain)
@@ -235,13 +234,13 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     //test method and Event with argument
     const newItemId = await kuggamax.getItemCount()
     console.log('newItemId:', newItemId)
-    await expect(kuggamax.connect(caller).permitCreateItem(owner.address, labId, itemHash, v, r, s))
+    await expect(kuggamax.connect(caller).permitCreateItem(labId, itemHash, owner.address, v, r, s))
       .to.emit(kuggamax, "ItemCreated")
       .withArgs(owner.address, labId, newItemId, anyValue)
 
 
     // //test method and get receipt
-    // const receipt = await kuggamax.connect(caller).permitCreateLab(owner.address, description, v, r, s)
+    // const receipt = await kuggamax.connect(caller).permitCreateItem(labId, itemHash, owner.address, v, r, s))
     // await receipt.wait()
     // console.log('receipt:', receipt)
 
@@ -298,10 +297,10 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
 
     const domain = buildDomain(name, version, chainId, kuggamax.address)
     const types = {
-      PermitMint: [  //PermitMint(address owner,uint64 itemId,uint256 amount,uint256 nonce)
-        {name: 'owner', type: 'address'},
+      PermitMint: [  //PermitMint(uint64 itemId,uint256 amount,address owner,uint256 nonce)
         {name: 'itemId', type: 'uint64'},
         {name: 'amount', type: 'uint256'},
+        {name: 'owner', type: 'address'},
         {name: 'nonce', type: 'uint256'}
       ]
     }
@@ -321,13 +320,13 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
     console.log('v, r, s:', v, r, s)
 
     //test method and Event with argument
-    await expect(kuggamax.connect(caller).permitMint(owner.address, itemId, itemAmount, v, r, s))
+    await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
       .to.emit(kuggamax, "ItemMinted")
       .withArgs(owner.address, itemId, itemAmount)
 
 
     // //test method and get receipt
-    // const receipt = await kuggamax.connect(caller).permitCreateLab(owner.address, description, v, r, s)
+    // const receipt = await kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
     // await receipt.wait()
     // console.log('receipt:', receipt)
 

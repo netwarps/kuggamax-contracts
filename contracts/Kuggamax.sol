@@ -21,13 +21,13 @@ contract Kuggamax is EIP712 {
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private constant _PERMIT_TYPE_HASH_CREATE_LAB =
-        keccak256("PermitCreateLab(address owner,string description,uint256 nonce)");
+        keccak256("PermitCreateLab(string description,address owner,uint256 nonce)");
 
     bytes32 private constant _PERMIT_TYPE_HASH_CREATE_ITEM =
-        keccak256("PermitCreateItem(address owner,uint64 labId,bytes32 hash,uint256 nonce)");
+        keccak256("PermitCreateItem(uint64 labId,bytes32 hash,address owner,uint256 nonce)");
 
     bytes32 private constant _PERMIT_TYPE_HASH_MINT =
-        keccak256("PermitMint(address owner,uint64 itemId,uint256 amount,uint256 nonce)");
+        keccak256("PermitMint(uint64 itemId,uint256 amount,address owner,uint256 nonce)");
 
     event LabCreated (
         uint64 LabId
@@ -179,14 +179,14 @@ contract Kuggamax is EIP712 {
     }
 
     function permitCreateLab(
-        address owner,
         string memory description,
+        address owner,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public noReentrancy {
 
-        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_LAB, owner, keccak256(bytes(description)), _useNonce(owner));
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_LAB, keccak256(bytes(description)), owner, _useNonce(owner));
         address signer = _recoverSigner(encode, v, r, s);
         require(signer == owner, "Kuggamax::permitCreateLab - invalid signature");
 
@@ -221,15 +221,15 @@ contract Kuggamax is EIP712 {
     }
 
     function permitCreateItem(
-        address owner,
         uint64 labId,
         bytes32 hash,
+        address owner,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public noReentrancy {
 
-        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_ITEM, owner, labId, hash, _useNonce(owner));
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_ITEM, labId, hash, owner, _useNonce(owner));
         address signer = _recoverSigner(encode, v, r, s);
         require(signer == owner, "Kuggamax::permitCreateItem - invalid signature");
 
@@ -292,15 +292,15 @@ contract Kuggamax is EIP712 {
     }
 
     function permitMint(
-        address owner,
         uint64 itemId,
         uint256 amount,
+        address owner,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public noReentrancy {
 
-        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_MINT, owner, itemId, amount, _useNonce(owner));
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_MINT, itemId, amount, owner, _useNonce(owner));
         address signer = _recoverSigner(encode, v, r, s);
         require(signer == owner, "Kuggamax::permitMint - invalid signature");
 
