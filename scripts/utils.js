@@ -23,7 +23,8 @@ async function getDeployedKuggamax (hre) {
   }
   const kuggamax = await hre.ethers.getContractAt('Kuggamax', kuggamaxAddress)
   const erc20Address = await kuggamax.kuggaToken()
-  const kmcToken = await hre.ethers.getContractAt('IERC20', erc20Address)
+  //const kmcToken = await hre.ethers.getContractAt('IERC20', erc20Address)
+  const kmcToken = await hre.ethers.getContractAt('Token20', erc20Address)
   const erc1155Address = await kuggamax.kugga1155()
   const itemToken = await hre.ethers.getContractAt('Token1155', erc1155Address)
   return { kuggamax, kmcToken, itemToken }
@@ -49,6 +50,9 @@ async function getFirstAccount () {
   return accounts[0]
 }
 
+function buildDomain(name, version, chainId, verifyingContract) {
+  return { name, version, chainId, verifyingContract }
+}
 
 module.exports = {
   getDeployedKuggamax,
@@ -57,4 +61,5 @@ module.exports = {
   hasEnoughAllowance,
   hasEnoughTokens,
   getFirstAccount,
+  buildDomain
 }

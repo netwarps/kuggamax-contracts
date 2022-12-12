@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.5",
     "@nomiclabs/buidler": "^1.4.8",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
@@ -23,6 +24,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
     "dotenv": "^16.0.3",
+    "ethereumjs-util": "^7.1.5",
     "prompt-confirm": "^2.0.4"
   }
 }

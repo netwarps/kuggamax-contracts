@@ -50,7 +50,7 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
       deploymentParams.MINT_DEPOSIT,
     )
 
-    await token.transfer(kuggamax.address, supply)
+    //await token.transfer(kuggamax.address, supply)
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
