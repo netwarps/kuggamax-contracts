@@ -4,10 +4,30 @@
 pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "./GuildBank.sol";
 import "./Token1155.sol";
+import "hardhat/console.sol";
+//import "@nomiclabs/buidler/console.sol";
 
-contract Kuggamax {
+
+contract Kuggamax is EIP712 {
+
+    using Counters for Counters.Counter;
+
+    mapping(address => Counters.Counter) private _nonces;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private constant _PERMIT_TYPE_HASH_CREATE_LAB =
+        keccak256("PermitCreateLab(address owner,string description,uint256 nonce)");
+
+    bytes32 private constant _PERMIT_TYPE_HASH_CREATE_ITEM =
+        keccak256("PermitCreateItem(address owner,uint64 labId,bytes32 hash,uint256 nonce)");
+
+    bytes32 private constant _PERMIT_TYPE_HASH_MINT =
+        keccak256("PermitMint(address owner,uint64 itemId,uint256 amount,uint256 nonce)");
 
     event LabCreated (
         uint64 LabId
@@ -92,7 +112,7 @@ contract Kuggamax {
 //        _;
 //    }
 
-    constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) {
+    constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) EIP712("Kuggamax", "1") {
         require(erc20 != address(0), "Kuggamax::constructor - kuggaToken cannot be 0");
         require(labDeposit_ > 0, "Kuggamax::constructor - labDeposit cannot be 0");
 
@@ -145,12 +165,40 @@ contract Kuggamax {
 
     function createLab(string memory description) public noReentrancy {
         // collect deposit from sender and store it
-        require(_kuggaToken.transferFrom(msg.sender, address(this), _labDeposit), "Kuggamax::createLab - deposit token transfer failed");
+        if (_labDeposit > 0) {
+            require(_kuggaToken.transferFrom(msg.sender, address(this), _labDeposit), "Kuggamax::createLab - deposit token transfer failed");
+        }
 
         Lab storage lab = _labArray.push();
         lab.entry.owner = msg.sender;
         lab.entry.description = description;
         lab.members[msg.sender] = true;
+
+        uint256 labIndex = _labArray.length - 1;
+        emit LabCreated(uint64(labIndex));
+    }
+
+    function permitCreateLab(
+        address owner,
+        string memory description,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public noReentrancy {
+
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_LAB, owner, keccak256(bytes(description)), _useNonce(owner));
+        address signer = _recoverSigner(encode, v, r, s);
+        require(signer == owner, "Kuggamax::permitCreateLab - invalid signature");
+
+        // collect deposit from sender and store it
+        if (_labDeposit > 0) {
+            require(_kuggaToken.transferFrom(owner, address(this), _labDeposit), "Kuggamax::permitCreateLab - deposit token transfer failed");
+        }
+
+        Lab storage lab = _labArray.push();
+        lab.entry.owner = owner;
+        lab.entry.description = description;
+        lab.members[owner] = true;
 
         uint256 labIndex = _labArray.length - 1;
         emit LabCreated(uint64(labIndex));
@@ -170,6 +218,37 @@ contract Kuggamax {
 
         uint256 itemIndex = _itemArray.length - 1;
         emit ItemCreated(msg.sender, labId, uint64(itemIndex), hash);
+    }
+
+    function permitCreateItem(
+        address owner,
+        uint64 labId,
+        bytes32 hash,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public noReentrancy {
+
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_ITEM, owner, labId, hash, _useNonce(owner));
+        address signer = _recoverSigner(encode, v, r, s);
+        require(signer == owner, "Kuggamax::permitCreateItem - invalid signature");
+
+        console.log("ItemHash:");
+        console.logBytes32(hash);
+
+        require(labId < _labArray.length, "Kuggamax::permitCreateItem - invalid labId");
+        require(_labArray[labId].members[owner], "Kuggamax::permitCreateItem - not a member of the lab");
+        // collect deposit from sender and store it
+        if (_itemDeposit > 0) {
+            require(_kuggaToken.transferFrom(owner, address(this), _itemDeposit), "Kuggamax::permitCreateItem - deposit token transfer failed");
+        }
+
+        ItemEntry storage item = _itemArray.push();
+        item.owner = owner;
+        item.hash = hash;
+
+        uint256 itemIndex = _itemArray.length - 1;
+        emit ItemCreated(owner, labId, uint64(itemIndex), hash);
     }
 
     function addMembers(uint64 labId, address[] calldata newMembers) external noReentrancy {
@@ -212,6 +291,34 @@ contract Kuggamax {
         emit ItemMinted(operator, itemId, amount);
     }
 
+    function permitMint(
+        address owner,
+        uint64 itemId,
+        uint256 amount,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public noReentrancy {
+
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_MINT, owner, itemId, amount, _useNonce(owner));
+        address signer = _recoverSigner(encode, v, r, s);
+        require(signer == owner, "Kuggamax::permitMint - invalid signature");
+
+        address operator = owner;
+
+        require(itemId < _itemArray.length, "Kuggamax::permitMint - invalid item id");
+        require(amount > 0, "Kuggamax::permitMint - invalid amount");
+        require(operator == _itemArray[itemId].owner, "Kuggamax::permitMint - not item owner");
+        require(!_kugga1155.exists(itemId), "Kuggamax::permitMint - token existing");
+        // collect deposit from sender and store it
+        if (_mintDeposit > 0) {
+            require(_kuggaToken.transferFrom(operator, address(this), _mintDeposit), "Kuggamax::permitMint - mint token transfer failed");
+        }
+
+        _kugga1155.mint(operator, itemId, amount, new bytes(itemId));
+
+        emit ItemMinted(operator, itemId, amount);
+    }
 
     // transfer native tokens to the contract, get some ERC20 back
     function deposit() public noReentrancy payable {
@@ -242,6 +349,32 @@ contract Kuggamax {
             amount
         );
     }
+
+    //Permit related methods similar with ERC20Permit
+    function nonces(address owner) public view returns (uint256) {
+        return _nonces[owner].current();
+    }
+
+    function _useNonce(address owner) internal returns (uint256 current) {
+        Counters.Counter storage nonce = _nonces[owner];
+        current = nonce.current();
+        nonce.increment();
+    }
+
+    function _recoverSigner(
+        bytes memory abiEncode,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) private returns(address) {
+
+        bytes32 structHash = keccak256(abiEncode);
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        return ECDSA.recover(hash, v, r, s);
+    }
+
 //
 //    // keeper burns shares to withdraw on behalf of the donor
 //    function keeperWithdraw(uint256 sharesToBurn, address recipient) public noReentrancy {
