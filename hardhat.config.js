@@ -5,6 +5,7 @@ require("./tasks/test");
 require("./tasks/moloch-tasks");
 require("./tasks/pool-tasks");
 require("./tasks/kuggamax-tasks");
+require("./tasks/kuggamax-tasks-permit");
 
 
 const ACCOUNT_PRIVATE_KEY = process.env.ACCOUNT_PRIVATE_KEY;
@@ -40,7 +41,8 @@ const polygonNumbaiNodeUrl = isInfura
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  defaultNetwork: 'maticmum',
+  //defaultNetwork: 'maticmum',
+  defaultNetwork: 'localhost',
   solidity: {
     version:  "0.8.4",
     settings: {
