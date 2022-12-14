@@ -26,8 +26,8 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
     console.log('token name:', name)
 
     const accounts = await hre.ethers.getSigners()
-    const owner = accounts[0]   //lab creator
-    const caller = accounts[10] //token20.permit() caller
+    const caller = accounts[0] //token20.permit() caller
+    const owner = accounts[1]   //lab creator
     const chainId = await owner.getChainId()
 
     const maxDeadline = hre.ethers.constants.MaxUint256
@@ -108,8 +108,8 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     console.log('contract name:', name)
 
     const accounts = await hre.ethers.getSigners()
-    const owner = accounts[0]
-    const caller = accounts[10]
+    const caller = accounts[0]
+    const owner = accounts[1]
     const chainId = await owner.getChainId()
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -185,8 +185,8 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     console.log('contract name:', name)
 
     const accounts = await hre.ethers.getSigners()
-    const owner = accounts[0]
-    const caller = accounts[10]
+    const caller = accounts[0]
+    const owner = accounts[1]
     const chainId = await owner.getChainId()
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -275,8 +275,8 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
     console.log('contract name:', name)
 
     const accounts = await hre.ethers.getSigners()
-    const owner = accounts[0]
-    const caller = accounts[10]
+    const caller = accounts[0]
+    const owner = accounts[1]
     const chainId = await owner.getChainId()
 
     const nonce = await kuggamax.nonces(owner.address)
