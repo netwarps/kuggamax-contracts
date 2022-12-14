@@ -13,7 +13,7 @@ const {
   verifySubmitVote,
   verifyProcessProposal,
   verifyMember
-} = require('./test-utils')
+} = require('../test/test-utils')
 
 chai
   .use(require('chai-as-promised'))

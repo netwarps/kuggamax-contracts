@@ -19,7 +19,7 @@ const {
   verifySubmitVote,
   verifyProcessProposal,
   verifyMember
-} = require('./test-utils')
+} = require('../test/test-utils')
 
 const Moloch = artifacts.require('./Moloch')
 const Token = artifacts.require('./Token')
