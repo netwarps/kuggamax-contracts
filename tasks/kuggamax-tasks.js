@@ -31,7 +31,7 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
       return
     }
 
-    const [owner] = await hre.ethers.getSigners()
+    const accounts = await hre.ethers.getSigners()
     const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
 
     const Token = await hre.ethers.getContractFactory("Token20");
@@ -50,7 +50,12 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
       deploymentParams.MINT_DEPOSIT,
     )
 
-    //await token.transfer(kuggamax.address, supply)
+    //const admin = accounts[0] //kuggamax Admin
+    const user1 = accounts[1] //test user1
+    const user2 = accounts[2] //test user2
+    await token.transfer(user1.address, 100)
+    await token.transfer(user2.address, 100)
+    await token.transfer(kuggamax.address, supply.div(10))
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
