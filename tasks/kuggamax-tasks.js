@@ -1,7 +1,6 @@
 
 const {
   getDeployedKuggamax,
-  getFirstAccount,
   hasEnoughTokens,
   hasEnoughAllowance,
   giveAllowance,
@@ -10,6 +9,7 @@ const deploymentParams = require("./deployment-params");
 
 const Confirm = require("prompt-confirm");
 const {sha256, randomBytes} = require("ethers/lib/utils");
+
 
 task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
   .setAction(async (_, hre) => {
@@ -64,8 +64,8 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
   })
 
 task('create-lab', 'Create a new lab')
-  .addParam('description', 'The description of the lab')
-  .setAction(async ({ description }, hre) => {
+  .addParam('title', 'The lab title')
+  .setAction(async ({ title }, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
@@ -85,7 +85,11 @@ task('create-lab', 'Create a new lab')
       await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)
     }
 
-    await kuggamax.createLab(description)
+    const labAssocId = Number(await kuggamax.getLabCount()) + 10
+    console.log('labAssocId:', labAssocId)
+
+    const description = 'Description of lab ' + title
+    await kuggamax.createLab(labAssocId, title, description)
 
     console.log('Lab created')
   })

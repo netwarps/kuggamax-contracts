@@ -96,8 +96,8 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
 
 
 task('permit-create-lab', 'Permit someone to execute new lab creation operation instead by verifying signature')
-  .addParam('description', 'The description of the lab')
-  .setAction(async ({ description }, hre) => {
+  .addParam('title', 'The lab title')
+  .setAction(async ({ title }, hre) => {
     await run('compile')
 
     const { kuggamax, kmcToken } = await getDeployedKuggamax(hre)
@@ -115,7 +115,7 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     const nonce = await kuggamax.nonces(owner.address)
     console.log('nonce=', nonce)
 
-    console.log('param:', description)
+    console.log('param:', title)
 
     const balanceOfOwner = await kmcToken.balanceOf(owner.address)
     console.log('owner KMC balance:', balanceOfOwner.toString())
@@ -123,16 +123,24 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     const nativeBalance = hre.ethers.utils.formatEther(await owner.getBalance())
     console.log('owner native balance: ', nativeBalance)
 
+    const labAssocId = Number(await kuggamax.getLabCount()) + 10
+    console.log('labAssocId:', labAssocId)
+
     const domain = buildDomain(name, version, chainId, kuggamax.address)
     const types = {
-      PermitCreateLab: [  //PermitCreateLab(string description,address owner,uint256 nonce)
+      PermitCreateLab: [  //PermitCreateLab(uint64 labAssocId,string title,string description,address owner,uint256 nonce)
+        {name: 'labAssocId', type: 'uint64'},
+        {name: 'title', type: 'string'},
         {name: 'description', type: 'string'},
         {name: 'owner', type: 'address'},
         {name: 'nonce', type: 'uint256'}
       ]
     }
+    const desc = 'Description of Lab ' + title
     const data = {
-      description: description,
+      labAssocId: labAssocId,
+      title: title,
+      description: desc,
       owner: owner.address,
       nonce: nonce,
     }
@@ -148,8 +156,8 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     //test method and Event with argument
     const newLabId = await kuggamax.getLabCount()
     console.log('newLabId:', newLabId)
-    await expect(kuggamax.connect(caller).permitCreateLab(description, owner.address, v, r, s))
-      .to.emit(kuggamax, "LabCreated").withArgs(newLabId)
+    await expect(kuggamax.connect(caller).permitCreateLab(labAssocId, title, desc, owner.address, v, r, s))
+      .to.emit(kuggamax, "LabCreated").withArgs(newLabId, labAssocId)
 
     // //test method and get receipt
     // const receipt = await kuggamax.connect(caller).permitCreateLab(description, owner.address, v, r, s))
