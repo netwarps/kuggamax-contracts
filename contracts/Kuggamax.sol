@@ -21,7 +21,7 @@ contract Kuggamax is EIP712 {
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private constant _PERMIT_TYPE_HASH_CREATE_LAB =
-        keccak256("PermitCreateLab(uint64 labAssocId,string title,string description,address owner,uint256 nonce)");
+        keccak256("PermitCreateLab(string title,string description,address owner,uint256 nonce)");
 
     bytes32 private constant _PERMIT_TYPE_HASH_CREATE_ITEM =
         keccak256("PermitCreateItem(uint64 labId,bytes32 hash,address owner,uint256 nonce)");
@@ -195,7 +195,7 @@ contract Kuggamax is EIP712 {
         bytes32 s
     ) public noReentrancy {
 
-        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_LAB, labAssocId, keccak256(bytes(title)), keccak256(bytes(description)), owner, _useNonce(owner));
+        bytes memory encode = abi.encode(_PERMIT_TYPE_HASH_CREATE_LAB, keccak256(bytes(title)), keccak256(bytes(description)), owner, _useNonce(owner));
         address signer = _recoverSigner(encode, v, r, s);
         require(signer == owner, "Kuggamax::permitCreateLab - invalid signature");
 

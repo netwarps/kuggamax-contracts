@@ -123,13 +123,9 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     const nativeBalance = hre.ethers.utils.formatEther(await owner.getBalance())
     console.log('owner native balance: ', nativeBalance)
 
-    const labAssocId = Number(await kuggamax.getLabCount()) + 10
-    console.log('labAssocId:', labAssocId)
-
     const domain = buildDomain(name, version, chainId, kuggamax.address)
     const types = {
-      PermitCreateLab: [  //PermitCreateLab(uint64 labAssocId,string title,string description,address owner,uint256 nonce)
-        {name: 'labAssocId', type: 'uint64'},
+      PermitCreateLab: [  //PermitCreateLab(string title,string description,address owner,uint256 nonce)
         {name: 'title', type: 'string'},
         {name: 'description', type: 'string'},
         {name: 'owner', type: 'address'},
@@ -138,7 +134,6 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     }
     const desc = 'Description of Lab ' + title
     const data = {
-      labAssocId: labAssocId,
       title: title,
       description: desc,
       owner: owner.address,
@@ -154,6 +149,8 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     console.log('v, r, s:', v, r, s)
 
     //test method and Event with argument
+    const labAssocId = Number(await kuggamax.getLabCount()) + 10
+    console.log('labAssocId:', labAssocId)
     const newLabId = await kuggamax.getLabCount()
     console.log('newLabId:', newLabId)
     await expect(kuggamax.connect(caller).permitCreateLab(labAssocId, title, desc, owner.address, v, r, s))
