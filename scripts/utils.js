@@ -3,6 +3,8 @@
 // RuntimeEnvironment is available in the global scope.
 
 
+const {randomBytes, sha256} = require("ethers/lib/utils");
+
 /**
  * Returns the address of the Kuggamax as set in the config, or undefined if
  * it hasn't been set.
@@ -32,7 +34,8 @@ async function getDeployedKuggamax (hre) {
 
 
 async function giveAllowance (tokenContract, allowanceGiver, receiverContract, amount) {
-  return tokenContract.approve(receiverContract.address, amount, { from: allowanceGiver })
+  //return tokenContract.approve(receiverContract.address, amount, { from: allowanceGiver })
+  return tokenContract.connect(allowanceGiver).approve(receiverContract.address, amount)
 }
 
 async function hasEnoughAllowance (tokenContract, allowanceGiver, receiverContract, amount) {
@@ -54,6 +57,11 @@ function buildDomain(name, version, chainId, verifyingContract) {
   return { name, version, chainId, verifyingContract }
 }
 
+const getRandItemHash = (labId) => {
+  const itemContent = Buffer.from('itemContent-' + labId + '-' + randomBytes(8), 'utf8')
+  return sha256(itemContent)
+}
+
 module.exports = {
   getDeployedKuggamax,
   getKuggamaxAddress,
@@ -61,5 +69,6 @@ module.exports = {
   hasEnoughAllowance,
   hasEnoughTokens,
   getFirstAccount,
-  buildDomain
+  buildDomain,
+  getRandItemHash
 }

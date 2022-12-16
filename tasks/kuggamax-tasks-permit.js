@@ -1,14 +1,15 @@
 
 const { expect } = require('chai');
 //const {run} = require("hardhat");
-const ethUtil = require("ethereumjs-util");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 const {
   getDeployedKuggamax,
-  buildDomain
+  buildDomain,
+  getRandItemHash
 } = require('../scripts/utils')
 const deploymentParams = require("./deployment-params");
+const {randomBytes, sha256} = require("ethers/lib/utils");
 
 const version = "1";
 
@@ -206,8 +207,7 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     console.log('owner native balance: ', nativeBalance)
 
     const labId = Number(labid)
-    const itemContent = Buffer.from("itemContent-" +new Date().toLocaleString(), 'utf8')
-    const itemHash = ethUtil.keccak(itemContent)
+    const itemHash = getRandItemHash(labId)
     console.log('labId:', labId)
     console.log('itemHash:', itemHash, typeof(itemHash))
 
