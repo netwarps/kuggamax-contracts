@@ -4,6 +4,9 @@
 
 
 const {randomBytes, sha256} = require("ethers/lib/utils");
+const {expect} = require("chai");
+const {BigNumber} = require("ethers");
+const deploymentParams = require("../tasks/deployment-params");
 
 /**
  * Returns the address of the Kuggamax as set in the config, or undefined if
@@ -62,6 +65,45 @@ const getRandItemHash = (labId) => {
   return sha256(itemContent)
 }
 
+//permit approve kmc to kuggamax contract
+const permitApproveKmc = async (kmcToken, owner, spender, amount, hre) => {
+  const name = await kmcToken.name()
+  const version = "1"
+
+  const accounts = await hre.ethers.getSigners()
+  const caller = accounts[0] //token20.permit() caller
+  const chainId = await owner.getChainId()
+
+  const maxDeadline = hre.ethers.constants.MaxUint256
+  const nonce = await kmcToken.nonces(owner.address)
+
+  let kmcAmount = amount
+
+  const domain = buildDomain(name, version, chainId, kmcToken.address)
+  const types = {
+    Permit: [ //"Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+      {name: 'owner', type: 'address'},
+      {name: 'spender', type: 'address'},
+      {name: 'value', type: 'uint256'},
+      {name: 'nonce', type: 'uint256'},
+      {name: 'deadline', type: 'uint256'}
+    ]
+  }
+  const data = {
+    owner: owner.address,
+    spender: spender.address,
+    value: kmcAmount,
+    nonce: nonce,
+    deadline: maxDeadline
+  }
+
+  const signature = await owner._signTypedData(domain, types, data)
+  const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+  await kmcToken.connect(caller).permit(owner.address, spender.address, kmcAmount, maxDeadline, v, r, s)
+
+  expect(await kmcToken.allowance(owner.address, spender.address)).to.be.equal(kmcAmount)
+}
+
 module.exports = {
   getDeployedKuggamax,
   getKuggamaxAddress,
@@ -70,5 +112,6 @@ module.exports = {
   hasEnoughTokens,
   getFirstAccount,
   buildDomain,
-  getRandItemHash
+  getRandItemHash,
+  permitApproveKmc
 }

@@ -5,8 +5,11 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 const {
   getDeployedKuggamax,
+  hasEnoughAllowance,
+  hasEnoughTokens,
   buildDomain,
-  getRandItemHash
+  getRandItemHash,
+  permitApproveKmc
 } = require('../scripts/utils')
 const deploymentParams = require("./deployment-params");
 const {randomBytes, sha256} = require("ethers/lib/utils");
@@ -113,6 +116,16 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     const owner = accounts[1]
     const chainId = await owner.getChainId()
 
+    //if owner has no enough allowance for create lab, approve it by permit
+    const deposit = deploymentParams.LAB_DEPOSIT
+    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
+      await permitApproveKmc(kmcToken, owner, kuggamax, deposit, hre)
+    }
+    //Just for test!!! if owner has enough kmc balance for create lab, transfer it from accounts[0]
+    if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
+      kmcToken.connect(caller).transfer(owner.address, deposit)
+    }
+
     const nonce = await kuggamax.nonces(owner.address)
     console.log('nonce=', nonce)
 
@@ -194,6 +207,16 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     const caller = accounts[0]
     const owner = accounts[1]
     const chainId = await owner.getChainId()
+
+    //if owner has no enough allowance for create item, approve it by permit
+    const deposit = deploymentParams.ITEM_DEPOSIT
+    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
+      await permitApproveKmc(kmcToken, owner, kuggamax, deposit, hre)
+    }
+    //Just for test!!! if owner has enough kmc balance for create item, transfer it from accounts[0]
+    if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
+      kmcToken.connect(caller).transfer(owner.address, deposit)
+    }
 
     const nonce = await kuggamax.nonces(owner.address)
     console.log('nonce=', nonce)
@@ -283,6 +306,16 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
     const caller = accounts[0]
     const owner = accounts[1]
     const chainId = await owner.getChainId()
+
+    //if owner has no enough allowance for mint, approve it by permit
+    const deposit = deploymentParams.MINT_DEPOSIT
+    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
+      await permitApproveKmc(kmcToken, owner, kuggamax, deposit, hre)
+    }
+    //Just for test!!! if owner has enough kmc balance for mint, transfer it from accounts[0]
+    if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
+      kmcToken.connect(caller).transfer(owner.address, deposit)
+    }
 
     const nonce = await kuggamax.nonces(owner.address)
     console.log('nonce=', nonce)

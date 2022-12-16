@@ -50,12 +50,12 @@ task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
       deploymentParams.MINT_DEPOSIT,
     )
 
-    //const admin = accounts[0] //kuggamax Admin
-    const user1 = accounts[1] //test user1
-    const user2 = accounts[2] //test user2
-    await token.transfer(user1.address, hre.ethers.utils.parseEther('1000'))
-    await token.transfer(user2.address, hre.ethers.utils.parseEther('1000'))
-    await token.transfer(kuggamax.address, supply.div(10))
+    // const admin = accounts[0] //kuggamax Admin
+    // const user1 = accounts[1] //test user1
+    // const user2 = accounts[2] //test user2
+    // await token.transfer(user1.address, hre.ethers.utils.parseEther('1000'))
+    // await token.transfer(user2.address, hre.ethers.utils.parseEther('1000'))
+    await token.transfer(kuggamax.address, supply.div(2))
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
