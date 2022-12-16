@@ -168,7 +168,7 @@ contract Kuggamax is EIP712 {
     function _createLab(uint64 labAssocId, string memory title, string memory description, address owner) private {
         // collect deposit from sender and store it
         if (_labDeposit > 0) {
-            require(_kuggaToken.transferFrom(owner, address(this), _labDeposit), "Kuggamax::createLab - deposit token transfer failed");
+            _kuggaToken.transferFrom(owner, address(this), _labDeposit);
         }
 
         Lab storage lab = _labArray.push();
@@ -208,7 +208,7 @@ contract Kuggamax is EIP712 {
 
         // collect deposit from sender and store it
         if (_itemDeposit > 0) {
-            require(_kuggaToken.transferFrom(owner, address(this), _itemDeposit), "Kuggamax::createItem - deposit token transfer failed");
+            _kuggaToken.transferFrom(owner, address(this), _itemDeposit);
         }
 
         ItemEntry storage item = _itemArray.push();
@@ -267,12 +267,12 @@ contract Kuggamax is EIP712 {
 
         require(itemId < _itemArray.length, "Kuggamax::mint - invalid item id");
         require(operator == _itemArray[itemId].owner, "Kuggamax::mint - not item owner");
+        require(amount > 0, "Kuggamax::mint - invalid amount");
         require(!_kugga1155.exists(itemId), "Kuggamax::mint - token existing");
-        require(amount > 0, "Kuggamax::mint - amount is 0");
 
         // collect deposit from sender and store it
         if (_mintDeposit > 0) {
-            require(_kuggaToken.transferFrom(operator, address(this), _mintDeposit), "Kuggamax::mint - mint token transfer failed");
+            _kuggaToken.transferFrom(operator, address(this), _mintDeposit);
         }
 
         _kugga1155.mint(operator, itemId, amount, new bytes(itemId));
