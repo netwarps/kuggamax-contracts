@@ -165,7 +165,7 @@ contract Kuggamax is EIP712 {
         return _itemArray.length;
     }
 
-    function _createLab(uint64 labAssocId, string memory title, string memory description, address owner) private {
+    function _createLab(uint64 labAssocId, string calldata title, string calldata description, address owner) private {
         // collect deposit from sender and store it
         if (_labDeposit > 0) {
             _kuggaToken.transferFrom(owner, address(this), _labDeposit);
@@ -181,14 +181,14 @@ contract Kuggamax is EIP712 {
         emit LabCreated(uint64(labIndex), labAssocId);
     }
 
-    function createLab(uint64 labAssocId, string memory title, string memory description) public noReentrancy {
+    function createLab(uint64 labAssocId, string calldata title, string calldata description) public noReentrancy {
         _createLab(labAssocId, title, description, msg.sender);
     }
 
     function permitCreateLab(
         uint64 labAssocId,
-        string memory title,
-        string memory description,
+        string calldata title,
+        string calldata description,
         address owner,
         uint8 v,
         bytes32 r,
