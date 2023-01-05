@@ -1,9 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require('dotenv').config();
 
-require("./tasks/test");
-require("./tasks/moloch-tasks");
-require("./tasks/pool-tasks");
+
 require("./tasks/kuggamax-tasks");
 require("./tasks/kuggamax-tasks-permit");
 
@@ -57,12 +55,12 @@ module.exports = {
           }
         }
       }
-    },
+    }
   },
   networks: {
     localhost: {
       deployedContracts: {
-        kuggamax: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+        kuggamax: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
       }
     },
     // ropsten: {
@@ -85,8 +83,8 @@ module.exports = {
         gasLimit:46000000,
         accounts: [`0x${ACCOUNT_PRIVATE_KEY}`],
         deployedContracts:{
-          kuggamax: '0x2F7B9cAdBDf555F035201BBa9F48784472e1F312',
+          kuggamax: '0x2F7B9cAdBDf555F035201BBa9F48784472e1F312'
         }
-    },
+    }
   }
 };
