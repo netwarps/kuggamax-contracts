@@ -11,12 +11,12 @@ const Confirm = require("prompt-confirm");
 const {sha256, randomBytes} = require("ethers/lib/utils");
 
 
-task('kuggamax-deploy', 'Deploys a new instance of the kuggamax')
+task('kuggamax-deploy-task', 'Deploys a new instance of the kuggamax for tasks')
   .setAction(async (_, hre) => {
     // Make sure everything is compiled
     await run('compile')
 
-    console.log('Deploying a new Kuggamax to the network ' + hre.network.name)
+    console.log('Deploying a new Kuggamax for tasks to the network ' + hre.network.name)
     console.log(
       'Deployment parameters:\n',
       '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
