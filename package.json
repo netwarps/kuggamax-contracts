@@ -24,6 +24,7 @@
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
     "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts-upgradeable": "^4.8.1",
     "dotenv": "^16.0.3",
     "eth-lightwallet": "^4.0.0",
     "ethereumjs-util": "^7.1.5",

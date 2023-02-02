@@ -5,15 +5,18 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+//import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+//import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "./GuildBank.sol";
 import "./Token1155.sol";
 import "hardhat/console.sol";
 //import "@nomiclabs/buidler/console.sol";
 
 
-contract Kuggamax is EIP712 {
+contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
 
     using Counters for Counters.Counter;
 
@@ -100,6 +103,8 @@ contract Kuggamax is EIP712 {
     Lab[] public _labArray;
     ItemEntry[] private _itemArray;
 
+    uint256[40] private __gap; // storage gap for upgrading
+
     /********
     MODIFIERS
     ********/
@@ -114,7 +119,9 @@ contract Kuggamax is EIP712 {
 //        _;
 //    }
 
-    constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) EIP712("Kuggamax", "1") {
+    //constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) EIP712("Kuggamax", "1") {
+    function initialize(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) public initializer {
+
         require(erc20 != address(0), "Kuggamax::constructor - kuggaToken cannot be 0");
         require(labDeposit_ > 0, "Kuggamax::constructor - labDeposit cannot be 0");
 
