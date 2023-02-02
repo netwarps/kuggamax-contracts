@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "./GuildBank.sol";
 import "./Token1155.sol";
 import "hardhat/console.sol";
 //import "@nomiclabs/buidler/console.sol";
@@ -76,7 +75,6 @@ contract Kuggamax is EIP712 {
     IERC20 private _kuggaToken; // approved token contract reference
 
     Token1155 private _kugga1155; // ERC1155 token contract reference
-    GuildBank private _guildBank; // guild bank contract reference
 
     bool locked; // prevent re-entrancy
 
@@ -120,7 +118,6 @@ contract Kuggamax is EIP712 {
 
         _kuggaToken = IERC20(erc20);
         _kugga1155 = new Token1155();
-        _guildBank = new GuildBank(erc20);
 
         _labDeposit = labDeposit_;
         _itemDeposit = itemDeposit_;
