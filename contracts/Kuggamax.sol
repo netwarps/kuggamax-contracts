@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import "./GuildBank.sol";
 import "./Token1155.sol";
 import "hardhat/console.sol";
 //import "@nomiclabs/buidler/console.sol";
@@ -79,7 +78,6 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
     IERC20 private _kuggaToken; // approved token contract reference
 
     Token1155 private _kugga1155; // ERC1155 token contract reference
-    GuildBank private _guildBank; // guild bank contract reference
 
     bool locked; // prevent re-entrancy
 
