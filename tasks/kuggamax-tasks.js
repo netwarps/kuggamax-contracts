@@ -136,7 +136,7 @@ task('create-lab', 'Create a new lab')
     }
 
     if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)) {
-      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.LAB_DEPOSIT)
+      await giveAllowance(kmcToken, sender, kuggamax, deploymentParams.LAB_DEPOSIT)
     }
 
     const labAssocId = Number(await kuggamax.getLabCount()) + 10
@@ -172,7 +172,7 @@ task('create-item', 'Create a new item')
     }
 
     if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)) {
-      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.ITEM_DEPOSIT)
+      await giveAllowance(kmcToken, sender, kuggamax, deploymentParams.ITEM_DEPOSIT)
     }
 
     await kuggamax.createItem(lab, hash)
@@ -201,7 +201,7 @@ task('mint', 'Mint an ERC1155 token for the item')
     }
 
     if (!await hasEnoughAllowance(kmcToken, sender.address, kuggamax, deploymentParams.MINT_DEPOSIT)) {
-      await giveAllowance(kmcToken, sender.address, kuggamax, deploymentParams.MINT_DEPOSIT)
+      await giveAllowance(kmcToken, sender, kuggamax, deploymentParams.MINT_DEPOSIT)
     }
 
     await kuggamax.mint(item, amount)

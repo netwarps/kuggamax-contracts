@@ -71,6 +71,9 @@ const deployKuggmaxToken20 = async () => {
   const accounts = await hre.ethers.getSigners()
   const chainId = await kuggamax.signer.getChainId()
 
+  console.log('account0:' + accounts[0].address)
+  console.log('account1:' + accounts[1].address)
+
   //Create a lab, and a item for test
   await createLabItem(kuggamax, kmcToken, accounts)
 
@@ -84,10 +87,11 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
 
   let deposit = BigNumber.from(deploymentParams.LAB_DEPOSIT).add(deploymentParams.ITEM_DEPOSIT ).add(deploymentParams.MINT_DEPOSIT).toString()
   console.log('total deposit:', deposit)
-  if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
-    await giveAllowance(kmcToken, owner, kuggamax, deposit)
-  }
+
   if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
+    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
+      await giveAllowance(kmcToken, owner, kuggamax, deposit)
+    }
     kmcToken.connect(caller).transfer(owner.address, deposit)
   }
 
