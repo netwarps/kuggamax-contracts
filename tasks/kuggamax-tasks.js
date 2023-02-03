@@ -11,8 +11,62 @@ const Confirm = require("prompt-confirm");
 const {sha256, randomBytes} = require("ethers/lib/utils");
 
 
-task('kuggamax-deploy-task', 'Deploys a new instance of the kuggamax for tasks')
+task('kuggamax-deploy', 'Deploys a new instance of kuggamax')
   .setAction(async (_, hre) => {
+
+    /* This deploy task has the same function as './scripts/deploy-kuggamax.js' */
+    const [deployer] = await hre.ethers.getSigners();
+
+    console.log("Deploying contracts with the account:", deployer.address)
+    console.log("Deployer balance:", (await deployer.getBalance()).toString())
+
+    await run('compile')
+
+    console.log('Deploying a new Kuggamax to the network ' + hre.network.name)
+    console.log(
+      'Deployment parameters:\n',
+      '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
+      '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
+      '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
+    )
+
+    const prompt = new Confirm('Please confirm that the deployment parameters are correct')
+    const confirmation = await prompt.run()
+
+    if (!confirmation) {
+      return
+    }
+
+    const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
+    const Token = await hre.ethers.getContractFactory("Token20");
+    const token = await Token.deploy(supply);
+
+    console.log("Token address:", token.address);
+    console.log("Token supply:", await token.totalSupply());
+
+    const Kuggamax = await hre.ethers.getContractFactory("Kuggamax");
+
+    console.log("Deploying...")
+    const kuggamax = await Kuggamax.deploy(
+      token.address,
+      deploymentParams.LAB_DEPOSIT,
+      deploymentParams.ITEM_DEPOSIT,
+      deploymentParams.MINT_DEPOSIT,
+    )
+
+    await token.transfer(kuggamax.address, supply)
+
+    console.log('')
+    console.log('Kuggamax deployed. Address:', kuggamax.address)
+    console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await token.balanceOf(kuggamax.address)));
+    console.log('Deployed Kuggamax to network:' + hre.network.name + ' succeed !!!')
+
+  })
+
+task('kuggamax-deploy-task', 'Deploys a new instance of kuggamax for tasks')
+  .setAction(async (_, hre) => {
+    /* This deploy task is used for test tasks, so half of initial KMCs are kept by deployer account for subsequent test task  */
+
     // Make sure everything is compiled
     await run('compile')
 
