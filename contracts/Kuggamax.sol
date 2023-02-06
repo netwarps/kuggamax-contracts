@@ -7,12 +7,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Token1155.sol";
 import "hardhat/console.sol";
 //import "@nomiclabs/buidler/console.sol";
 
 
-contract Kuggamax is EIP712 {
+contract Kuggamax is EIP712, Ownable {
 
     using Counters for Counters.Counter;
 
@@ -343,7 +344,7 @@ contract Kuggamax is EIP712 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) private returns(address) {
+    ) private view returns(address) {
 
         bytes32 structHash = keccak256(abiEncode);
 
@@ -351,6 +352,13 @@ contract Kuggamax is EIP712 {
 
         return ECDSA.recover(hash, v, r, s);
     }
+
+    function adminWithdraw(uint256 amount) external onlyOwner {
+        require(amount <= address(this).balance, "Kuggamax::adminWithdraw - withdraw amount exceeds balance");
+        payable(msg.sender).transfer(amount);
+    }
+
+    receive() external payable {}
 
 //
 //    // keeper burns shares to withdraw on behalf of the donor

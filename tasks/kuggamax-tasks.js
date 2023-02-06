@@ -9,6 +9,7 @@ const deploymentParams = require("./deployment-params");
 
 const Confirm = require("prompt-confirm");
 const {sha256, randomBytes} = require("ethers/lib/utils");
+const {expect} = require("chai");
 
 
 task('kuggamax-deploy', 'Deploys a new instance of kuggamax')
@@ -298,6 +299,40 @@ task('withdraw', 'Withdraw native tokens by transferring some KMC')
     console.log('native balance: ', hre.ethers.utils.formatEther(await sender.getBalance()))
   })
 
+
+task('adminWithdraw', 'Administrator withdraw native tokens from Kuggamax')
+  .addParam('amount', "The amount of native tokens to withdraw")
+  .setAction(async ({ amount }, hre) => {
+    // Make sure everything is compiled
+    await run('compile')
+
+    const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
+    if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
+      return
+    }
+
+    const [sender] = await hre.ethers.getSigners()
+
+    const ethAmount = hre.ethers.utils.parseEther(amount)
+    const kmBalance = await sender.provider.getBalance(kuggamax.address)
+
+    console.log('Kuggamax native balance1: ', kmBalance)
+    const tx = {
+      to: kuggamax.address,
+      value: ethAmount
+    }
+    await sender.sendTransaction(tx)
+
+    console.log('Kuggamax native balance : ', await sender.provider.getBalance(kuggamax.address))
+    expect(await sender.provider.getBalance(kuggamax.address)).to.be.equals(kmBalance + ethAmount)
+
+    await kuggamax.adminWithdraw(ethAmount)
+
+    const kmBalance2 = await sender.provider.getBalance(kuggamax.address)
+    console.log('Kuggamax native balance2: ', kmBalance2)
+    expect(kmBalance).to.be.equal(kmBalance2)
+
+  })
 
 task('debug', 'Shows debug info')
   .setAction(async (_, hre) => {
