@@ -29,6 +29,8 @@ const revertMsg = {
   notOwnerOfItem: 'not item owner',
   invalidMintAmount: 'invalid amount',
   itemTokenExisting: 'token existing',
+  callerIsNotOwner: 'caller is not the owner',
+  balanceIsNotEnough: 'withdraw amount exceeds balance'
 
 };
 
@@ -130,6 +132,27 @@ describe('Kuggamax Contract', () => {
   // let caller, owner, spender, otherOne
 
   before('deploy contracts', async () => {
+
+  })
+
+  describe("admin-withdraw-revert", async () => {
+    console.log('admin-withdraw ----------')
+
+    it("Require fail - Not Kuggamax Owner", async () => {
+      console.log('-------------------------------------------------------------------')
+
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployKuggmaxToken20)
+      const deployer = accounts[0]
+      const otherOne = accounts[1]
+
+      console.log('deployer:', deployer.address)
+      console.log('otherOne:', otherOne.address)
+
+      await expect(kuggamax.connect(otherOne).adminWithdraw(10)).to.be.revertedWith(revertMsg.callerIsNotOwner)
+
+      await expect(kuggamax.connect(deployer).adminWithdraw(10)).to.be.revertedWith(revertMsg.balanceIsNotEnough)
+
+    })
 
   })
 
