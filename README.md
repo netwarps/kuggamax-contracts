@@ -14,7 +14,8 @@ Kuggamax is described by one smart contract:
 
   `Kuggamax.sol` - Responsible for managing Lab & membership, item publishing & NFT minting.
 
-Kuggamax is using an external ERC20 token, KMC. 
+Kuggamax is using an external ERC20 token, we called KMC, as the native token of Kuggamax. 
+
 Kuggamax is using ERC1155 to mint item NFT.
 
 ## Installation
