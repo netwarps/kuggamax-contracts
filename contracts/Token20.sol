@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-//import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract Token20 is ERC20Permit, Ownable {
-  constructor(uint256 supply) ERC20("Kuggamax Token", "KMC") ERC20Permit("Kuggamax Token") {
-    _mint(msg.sender, supply);
-  }
-  function mint(address to, uint256 amount) public onlyOwner {
-    _mint(to, amount);
-  }
+contract Token20 is ERC20PermitUpgradeable, OwnableUpgradeable {
+    //constructor(uint256 supply) ERC20("Kuggamax Token", "KMC") ERC20Permit("Kuggamax Token") {
+    function initialize(uint256 supply) public initializer {
+        string memory name = "Kuggamax Token";
+        string memory symbol = "KMC";
+        __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
+        __Ownable_init();
+
+        _mint(msg.sender, supply);
+    }
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    uint256[50] private __gap;
 }

@@ -3,19 +3,17 @@
 
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-//import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-//import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "./IToken1155.sol";
 import "./Token1155.sol";
-import "hardhat/console.sol";
-//import "@nomiclabs/buidler/console.sol";
 
 
-contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
+contract Kuggamax is Initializable, ContextUpgradeable, EIP712Upgradeable, OwnableUpgradeable {
 
     using Counters for Counters.Counter;
 
@@ -75,9 +73,9 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
     uint256 private _itemDeposit; // default = 0.01 Token
     uint256 private _mintDeposit; // default = 0.1 Token
 
-    IERC20 private _kuggaToken; // approved token contract reference
+    IERC20Upgradeable private _kuggaToken; // approved token contract reference
 
-    Token1155 private _kugga1155; // ERC1155 token contract reference
+    IToken1155 private _kugga1155; // ERC1155 token contract reference
 
     bool locked; // prevent re-entrancy
 
@@ -101,8 +99,6 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
     Lab[] public _labArray;
     ItemEntry[] private _itemArray;
 
-    uint256[40] private __gap; // storage gap for upgrading
-
     /********
     MODIFIERS
     ********/
@@ -118,14 +114,18 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
 //    }
 
     //constructor(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) EIP712("Kuggamax", "1") {
-    function initialize(address erc20, uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) public initializer {
+    function initialize(address erc20, address token1155,
+        uint256 labDeposit_, uint256 itemDeposit_, uint256 mintDeposit_) public initializer {
 
         require(erc20 != address(0), "Kuggamax::constructor - kuggaToken cannot be 0");
         require(labDeposit_ > 0, "Kuggamax::constructor - labDeposit cannot be 0");
 
-        _kuggaToken = IERC20(erc20);
-        _kugga1155 = new Token1155();
-        _guildBank = new GuildBank(erc20);
+        __Context_init();
+        __EIP712_init("Kuggamax", "1");
+        __Ownable_init();
+
+        _kuggaToken = IERC20Upgradeable(erc20);
+        _kugga1155 = IToken1155(token1155);
 
         _labDeposit = labDeposit_;
         _itemDeposit = itemDeposit_;
@@ -351,15 +351,19 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) private returns(address) {
+    ) private view returns(address) {
 
         bytes32 structHash = keccak256(abiEncode);
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        return ECDSA.recover(hash, v, r, s);
+        return ECDSAUpgradeable.recover(hash, v, r, s);
     }
 
+    function adminWithdraw(uint256 amount) external onlyOwner {
+        require(amount <= address(this).balance, "Kuggamax::adminWithdraw - withdraw amount exceeds balance");
+        payable(msg.sender).transfer(amount);
+    }
 //
 //    // keeper burns shares to withdraw on behalf of the donor
 //    function keeperWithdraw(uint256 sharesToBurn, address recipient) public noReentrancy {
@@ -418,4 +422,5 @@ contract Kuggamax is ContextUpgradeable, EIP712Upgradeable {
 //        );
 //    }
 
+    uint256[40] private __gap; // storage gap for upgrading
 }
