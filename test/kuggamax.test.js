@@ -11,7 +11,6 @@ const {
 } = require("../scripts/utils")
 
 const deploymentParams = require("../tasks/deployment-params")
-const hre = require("hardhat")
 const {sha256, randomBytes} = require("ethers/lib/utils")
 const {BigNumber} = require("ethers")
 
