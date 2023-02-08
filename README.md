@@ -12,23 +12,25 @@ The new Kuggamax is a decentralized publishing platform.
 
 Kuggamax is described by one smart contract:
 
-  `Kuggamax.sol` - Responsible for managing Lab & membership, item publishing & NFT minting.
+`Kuggamax.sol` - Responsible for managing Lab & membership, item publishing & NFT minting.
 
-Kuggamax is using an external ERC20 token, we called KMC, as the native token of Kuggamax. 
+Kuggamax is using an external ERC20 token, we called KMC, as the native token of Kuggamax.
 
 Kuggamax is using ERC1155 to mint item NFT.
 
 ## Installation
 
-To intall this project run `npm install`.
+To install this project run `npm install`.
 
 ## Testing
 
-To tests the contracts run `npm run test`.
+For Kuggamax unit test, you could run the hardhat test command.
 
-To compute their code coverage run `npm run coverage`.
+```
+npx hardhat test
+```
 
-## Deploying an interacting with a Kuggamax DAO and a Pool
+## Deploying and interacting with Kuggamax
 
 This project includes Hardhat tasks for deploying and using Kuggamax.
 
@@ -36,7 +38,7 @@ This project includes Hardhat tasks for deploying and using Kuggamax.
 
 #### Deploying a new Kuggamax
 
-Follow this instructions to deploy a new instance:
+Follow these instructions to deploy a new instance:
 
 1. Edit `hardhat.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
 2. Edit `deployment-params.js`, setting your desired deployment parameters.
@@ -45,7 +47,7 @@ Follow this instructions to deploy a new instance:
 
 ### Interacting with the smart contracts
 
-This project has tasks to work with Kuggamax contracts. To use them, you should first follow this instructions:
+This project has tasks to work with Kuggamax contracts. To use them, you should first follow these instructions:
 
 1. Edit `hardhat.config.js`, setting the values for `INFURA_API_KEY` and `MAINNET_PRIVATE_KEY`.
 2. Make sure you have the right address in `hardhat.config.js`'s `networks.mainnet.deployedContracts.kuggamax` field.
@@ -76,14 +78,5 @@ npx hardhat permit-create-lab --title MyLab1
 npx hardhat permit-create-item --labid 2
  
 npx hardhat permit-mint --itemid 2 --amount 3
-
 ```
 
-### Test Kuggamax contract
-
-For Kuggamax unit test, you could run the hardhat test command.
-
-```
-npx hardhat test
-
-```
