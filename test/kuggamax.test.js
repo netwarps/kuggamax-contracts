@@ -99,7 +99,7 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
   const labAssocId = Number(await kuggamax.getLabCount()) + 1
   console.log('labAssocId:', labAssocId)
 
-  const title = 'Lab-1'
+  const title = 'Lab-' + (labAssocId - 1)
   const description = 'Description of ' + title
   await kuggamax.connect(owner).createLab(labAssocId, title, description)
 
@@ -131,6 +131,34 @@ describe('Kuggamax Contract', () => {
   // let caller, owner, spender, otherOne
 
   before('deploy contracts', async () => {
+
+  })
+
+  describe('mint-revert', async () => {
+
+    it("Require fail - the item Token1155 shall not be existed", async () => {
+      console.log('-------------------------------------------------------------------')
+
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployKuggmaxToken20)
+      const {caller, owner} = getSigners(accounts)
+
+      const itemId = await kuggamax.getItemCount() - 1
+      const itemAmount = 1
+
+      expect(itemId >= 0)
+
+      const token1155 = await ethers.getContractAt('Token1155', await kuggamax.kugga1155())
+      if (!await token1155.exists(itemId)) {
+        //mint 1155 for test
+        await kuggamax.connect(owner).mint(itemId, itemAmount)
+        console.log('mint for itemId, amount:', itemId, itemAmount)
+
+        expect(await token1155.exists(itemId)).to.be.true
+      }
+
+      await expect(kuggamax.connect(owner).mint(itemId, itemAmount))
+        .to.be.revertedWith(revertMsg.itemTokenExisting)
+    })
 
   })
 
@@ -582,6 +610,9 @@ describe('Kuggamax Contract', () => {
       const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
       const {caller, owner, otherOne} = getSigners(accounts)
 
+      //create lab2 item2 for permitMint
+      await createLabItem(kuggamax, kmcToken, accounts)
+
       const name = "Kuggamax"
 
       const itemId = await kuggamax.getItemCount() - 1
@@ -604,7 +635,7 @@ describe('Kuggamax Contract', () => {
         const { v, r, s } = ethers.utils.splitSignature(signature)
         //mint 1155 for test
         await kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s)
-        console.log('mint for itemId,amount:', itemId, itemAmount)
+        console.log('permitMint for itemId, amount:', itemId, itemAmount)
 
         expect(await token1155.exists(itemId)).to.be.true
 
