@@ -45,24 +45,36 @@ const deployKuggmaxToken20 = async () => {
 
   const supply = ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
 
+  //Token20
   const Token = await ethers.getContractFactory("Token20")
-  const kmcToken = await Token.deploy(supply)
+  const kmcToken = await Token.deploy()
   expect( kmcToken !== undefined )
 
-  console.log("Token address:", kmcToken.address)
-  console.log("Token supply:", await kmcToken.totalSupply())
+  await kmcToken.initialize(supply)
+  console.log("KmcToken address:", kmcToken.address)
+  console.log("KmcToken supply:", await kmcToken.totalSupply())
 
+  //Token1155
+  const Token1155 = await ethers.getContractFactory("Token1155")
+  const token1155 = await Token1155.deploy()
+  expect( token1155 !== undefined )
+
+  await token1155.initialize("")
+  console.log("token1155 address:", token1155.address)
+
+  //kuggamax
+  console.log("Deploying Kuggamax contract ...")
   const Kuggamax = await ethers.getContractFactory("Kuggamax")
+  const kuggamax = await Kuggamax.deploy()
+  expect( kuggamax !== undefined )
 
-  console.log("Deploying...")
-  const kuggamax = await Kuggamax.deploy(
+  await kuggamax.initialize(
     kmcToken.address,
+    token1155.address,
     deploymentParams.LAB_DEPOSIT,
     deploymentParams.ITEM_DEPOSIT,
     deploymentParams.MINT_DEPOSIT,
   )
-
-  expect( kuggamax !== undefined )
 
   console.log('')
   console.log('Kuggamax deployed. Address:', kuggamax.address)
@@ -598,6 +610,7 @@ describe('Kuggamax Contract', () => {
         nonce: nonce,
       }
 
+      console.log('itemId:', itemId)
       const token1155 = await ethers.getContractAt('Token1155', await kuggamax.kugga1155())
       if (!await token1155.exists(itemId)) {
         const signature = await owner._signTypedData(domain, types, data)
