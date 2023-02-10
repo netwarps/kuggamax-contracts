@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Token1155.sol";
-import "hardhat/console.sol";
-//import "@nomiclabs/buidler/console.sol";
 
 
 contract Kuggamax is EIP712, Ownable {

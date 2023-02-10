@@ -1,7 +1,7 @@
 
-const { expect } = require('chai');
-//const {run} = require("hardhat");
-const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
+const { expect } = require('chai')
+//const {run} = require("hardhat")
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs")
 
 const {
   getDeployedKuggamax,
@@ -11,10 +11,10 @@ const {
   getRandItemHash,
   permitApproveKmc
 } = require('../scripts/utils')
-const deploymentParams = require("./deployment-params");
-const {randomBytes, sha256} = require("ethers/lib/utils");
+const deploymentParams = require("./deployment-params")
+const {randomBytes, sha256} = require("ethers/lib/utils")
 
-const version = "1";
+const version = "1"
 
 
 task('permit-approve', 'Permit someone to execute the KMC Approve operation instead by verifying signature')
@@ -87,7 +87,7 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
     console.log('')
     console.log('call permit succeed ...')
 
-    expect(await kmcToken.nonces(owner.address)).to.be.equal(nonce.add(1));
+    expect(await kmcToken.nonces(owner.address)).to.be.equal(nonce.add(1))
     console.log('kmcAmount:', kmcAmount)
     expect(await kmcToken.allowance(owner.address, spender)).to.be.equal(kmcAmount)
 

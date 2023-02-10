@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat")
 const { expect } = require("chai")
-const { time, loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { time, loadFixture } = require('@nomicfoundation/hardhat-network-helpers')
 
 const {
   buildDomain,
@@ -8,12 +8,11 @@ const {
   giveAllowance,
   hasEnoughTokens,
   getRandItemHash
-} = require("../scripts/utils");
+} = require("../scripts/utils")
 
-const deploymentParams = require("../tasks/deployment-params");
-const hre = require("hardhat");
-const {sha256, randomBytes} = require("ethers/lib/utils");
-const {BigNumber} = require("ethers");
+const deploymentParams = require("../tasks/deployment-params")
+const {sha256, randomBytes} = require("ethers/lib/utils")
+const {BigNumber} = require("ethers")
 
 const version = "1"
 
@@ -32,7 +31,7 @@ const revertMsg = {
   callerIsNotOwner: 'caller is not the owner',
   balanceIsNotEnough: 'withdraw amount exceeds balance'
 
-};
+}
 
 const deployKuggmaxToken20 = async () => {
 
@@ -44,16 +43,16 @@ const deployKuggmaxToken20 = async () => {
     '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
   )
 
-  const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
+  const supply = ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
 
-  const Token = await hre.ethers.getContractFactory("Token20")
+  const Token = await ethers.getContractFactory("Token20")
   const kmcToken = await Token.deploy(supply)
   expect( kmcToken !== undefined )
 
   console.log("Token address:", kmcToken.address)
   console.log("Token supply:", await kmcToken.totalSupply())
 
-  const Kuggamax = await hre.ethers.getContractFactory("Kuggamax")
+  const Kuggamax = await ethers.getContractFactory("Kuggamax")
 
   console.log("Deploying...")
   const kuggamax = await Kuggamax.deploy(
@@ -67,10 +66,10 @@ const deployKuggmaxToken20 = async () => {
 
   console.log('')
   console.log('Kuggamax deployed. Address:', kuggamax.address)
-  console.log("KMC in Kuggamax:", hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
+  console.log("KMC in Kuggamax:", ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
   console.log('')
 
-  const accounts = await hre.ethers.getSigners()
+  const accounts = await ethers.getSigners()
   const chainId = await kuggamax.signer.getChainId()
 
   console.log('account0:' + accounts[0].address)
@@ -100,7 +99,7 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
   const labAssocId = Number(await kuggamax.getLabCount()) + 1
   console.log('labAssocId:', labAssocId)
 
-  const title = 'Lab-1'
+  const title = 'Lab-' + (labAssocId - 1)
   const description = 'Description of ' + title
   await kuggamax.connect(owner).createLab(labAssocId, title, description)
 
@@ -132,6 +131,34 @@ describe('Kuggamax Contract', () => {
   // let caller, owner, spender, otherOne
 
   before('deploy contracts', async () => {
+
+  })
+
+  describe('mint-revert', async () => {
+
+    it("Require fail - the item Token1155 shall not be existed", async () => {
+      console.log('-------------------------------------------------------------------')
+
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployKuggmaxToken20)
+      const {caller, owner} = getSigners(accounts)
+
+      const itemId = await kuggamax.getItemCount() - 1
+      const itemAmount = 1
+
+      expect(itemId >= 0)
+
+      const token1155 = await ethers.getContractAt('Token1155', await kuggamax.kugga1155())
+      if (!await token1155.exists(itemId)) {
+        //mint 1155 for test
+        await kuggamax.connect(owner).mint(itemId, itemAmount)
+        console.log('mint for itemId, amount:', itemId, itemAmount)
+
+        expect(await token1155.exists(itemId)).to.be.true
+      }
+
+      await expect(kuggamax.connect(owner).mint(itemId, itemAmount))
+        .to.be.revertedWith(revertMsg.itemTokenExisting)
+    })
 
   })
 
@@ -261,7 +288,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       const balance = await kmcToken.balanceOf(caller.address)
       console.log('balance:', balance)
@@ -296,7 +323,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       //clear the allowance of create lab deposit
       const deposit = deploymentParams.LAB_DEPOSIT
@@ -333,7 +360,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       const labAssocId = Number(await kuggamax.getLabCount()) + 10
       console.log('labAssocId:', labAssocId)
@@ -385,7 +412,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature) //fromRpcSig(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature) //fromRpcSig(signature)
 
       await expect(kuggamax.connect(caller).permitCreateItem(labId, itemHash, otherOne.address, v, r, s))
         .to.be.revertedWith(revertMsg.permitInvalidSignature)
@@ -411,7 +438,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature) //fromRpcSig(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature) //fromRpcSig(signature)
 
       await expect(kuggamax.connect(caller).permitCreateItem(labId, itemHash, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.invalidLabId)
@@ -444,7 +471,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature) //fromRpcSig(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature) //fromRpcSig(signature)
 
       await expect(kuggamax.connect(caller).permitCreateItem(labId, itemHash, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.notMemberOfLab)
@@ -483,7 +510,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, otherOne.address, v, r, s))
         .to.be.revertedWith(revertMsg.permitInvalidSignature)
@@ -510,7 +537,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.invalidItemId)
@@ -544,7 +571,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.notOwnerOfItem)
@@ -571,7 +598,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.invalidMintAmount)
@@ -582,6 +609,9 @@ describe('Kuggamax Contract', () => {
 
       const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
       const {caller, owner, otherOne} = getSigners(accounts)
+
+      //create lab2 item2 for permitMint
+      await createLabItem(kuggamax, kmcToken, accounts)
 
       const name = "Kuggamax"
 
@@ -599,13 +629,13 @@ describe('Kuggamax Contract', () => {
         nonce: nonce,
       }
 
-      const token1155 = await hre.ethers.getContractAt('Token1155', await kuggamax.kugga1155())
+      const token1155 = await ethers.getContractAt('Token1155', await kuggamax.kugga1155())
       if (!await token1155.exists(itemId)) {
         const signature = await owner._signTypedData(domain, types, data)
-        const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+        const { v, r, s } = ethers.utils.splitSignature(signature)
         //mint 1155 for test
         await kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s)
-        console.log('mint for itemId,amount:', itemId, itemAmount)
+        console.log('permitMint for itemId, amount:', itemId, itemAmount)
 
         expect(await token1155.exists(itemId)).to.be.true
 
@@ -614,7 +644,7 @@ describe('Kuggamax Contract', () => {
       }
 
       const signature = await owner._signTypedData(domain, types, data)
-      const { v, r, s } = hre.ethers.utils.splitSignature(signature)
+      const { v, r, s } = ethers.utils.splitSignature(signature)
 
       await expect(kuggamax.connect(caller).permitMint(itemId, itemAmount, owner.address, v, r, s))
         .to.be.revertedWith(revertMsg.itemTokenExisting)
