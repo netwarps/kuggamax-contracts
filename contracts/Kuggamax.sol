@@ -30,8 +30,8 @@ contract Kuggamax is EIP712, Ownable {
         keccak256("PermitMint(uint64 itemId,uint256 amount,address owner,uint256 nonce)");
 
     event LabCreated (
-        uint64 LabId,
-        uint64 LabAssocId
+        uint64 labId,
+        uint64 labAssocId
     );
 
     event ItemCreated (
