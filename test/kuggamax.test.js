@@ -90,10 +90,10 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
   console.log('total deposit:', deposit)
 
   if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
-      await giveAllowance(kmcToken, owner, kuggamax, deposit)
-    }
     kmcToken.connect(caller).transfer(owner.address, deposit)
+  }
+  if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
+    await giveAllowance(kmcToken, owner, kuggamax, deposit)
   }
 
   const labAssocId = Number(await kuggamax.getLabCount()) + 1
