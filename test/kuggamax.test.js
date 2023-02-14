@@ -90,7 +90,7 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
   console.log('total deposit:', deposit)
 
   if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-    kmcToken.connect(caller).transfer(owner.address, deposit)
+    await kmcToken.connect(caller).transfer(owner.address, deposit)
   }
   if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
     await giveAllowance(kmcToken, owner, kuggamax, deposit)
@@ -373,7 +373,7 @@ describe('Kuggamax Contract', () => {
       //clear owner's kmc balance for test
       if (await hasEnoughTokens(kmcToken, owner.address, deposit)) {
         console.log('do clear kmc balance')
-        kmcToken.connect(owner).transfer(caller.address, 0)
+        await kmcToken.connect(owner).transfer(caller.address, 0)
       }
 
       //assert the owner has enough kmc for create lab

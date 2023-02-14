@@ -125,7 +125,7 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     //Just for test!!! if owner has enough kmc balance for create lab, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
       console.log('transfer to owner:', deposit)
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -217,7 +217,7 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     }
     //Just for test!!! if owner has enough kmc balance for create item, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -316,7 +316,7 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
     }
     //Just for test!!! if owner has enough kmc balance for mint, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)
