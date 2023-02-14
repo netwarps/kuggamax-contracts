@@ -1,57 +1,23 @@
-const { ethers } = require("hardhat")
-
-const deploymentParams = require("../tasks/deployment-params")
-
-const Confirm = require("prompt-confirm")
+const hre = require("hardhat")
+const {deployAllByProxy} = require("./utils");
 
 
 async function main() {
 
-  const [deployer] = await ethers.getSigners()
+  console.log('Deploying contracts to network [%s] by script:', hre.network.name,)
+  const [admin] = await hre.ethers.getSigners()
 
-  console.log("Deploying contracts with the account:", deployer.address)
-  console.log("Deployer balance:", (await deployer.getBalance()).toString())
+  console.log("Deploying contracts with the account:", admin.address)
+  console.log("Deployer native token balance:", (await admin.getBalance()).toString())
 
-  await run('compile')
+  const {kuggamax, kmcToken, accounts, chainId} = await deployAllByProxy(true, hre)
 
-  console.log('Deploying a new Kuggamax to the network ' + network.name)
-  console.log(
-    'Deployment parameters:\n',
-    '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
-    '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
-    '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
-  )
-
-  const prompt = new Confirm('Please confirm that the deployment parameters are correct')
-  const confirmation = await prompt.run()
-
-  if (!confirmation) {
-    return
-  }
-
-  const supply = ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
-  const Token = await ethers.getContractFactory("Token20")
-  const token = await Token.deploy(supply)
-
-  console.log("Token address:", token.address)
-  console.log("Token supply:", await token.totalSupply())
-
-  const Kuggamax = await ethers.getContractFactory("Kuggamax")
-
-  console.log("Deploying...")
-  const kuggamax = await Kuggamax.deploy(
-    token.address,
-    deploymentParams.LAB_DEPOSIT,
-    deploymentParams.ITEM_DEPOSIT,
-    deploymentParams.MINT_DEPOSIT,
-  )
-
-  await token.transfer(kuggamax.address, supply)
+  await kmcToken.transfer(kuggamax.address, await kmcToken.totalSupply())
 
   console.log('')
   console.log('Kuggamax deployed. Address:', kuggamax.address)
-  console.log('KMC in Kuggamax:', ethers.utils.formatEther(await token.balanceOf(kuggamax.address)))
-  console.log('Deployed Kuggamax to network:' + network.name + ' succeed !!!')
+  console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
+  console.log('Deployed Kuggamax to network:%s, chainId[%d] succeed !!!', hre.network.name, chainId)
 
 }
 

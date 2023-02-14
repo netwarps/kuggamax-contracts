@@ -1,5 +1,6 @@
-const { ethers } = require("hardhat")
-const { expect } = require("chai")
+const hre = require('hardhat')
+const { ethers} = require('hardhat')
+const { expect } = require('chai')
 const { time, loadFixture } = require('@nomicfoundation/hardhat-network-helpers')
 
 const {
@@ -7,14 +8,15 @@ const {
   hasEnoughAllowance,
   giveAllowance,
   hasEnoughTokens,
-  getRandItemHash
-} = require("../scripts/utils")
+  getRandItemHash,
+  deployAllByProxy
+} = require('../scripts/utils')
 
-const deploymentParams = require("../tasks/deployment-params")
-const {sha256, randomBytes} = require("ethers/lib/utils")
-const {BigNumber} = require("ethers")
+const deploymentParams = require('../tasks/deployment-params')
+const {sha256, randomBytes} = require('ethers/lib/utils')
+const {BigNumber} = require('ethers')
 
-const version = "1"
+const version = '1'
 
 
 const revertMsg = {
@@ -33,68 +35,12 @@ const revertMsg = {
 
 }
 
-const deployKuggmaxToken20 = async () => {
+/* Deploy Contracts for Unit Test */
+const deployForTest = async () => {
 
-  console.log('Deploying a new Kuggamax to localhost ')
-  console.log(
-    'Deployment parameters:\n',
-    '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
-    '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
-    '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
-  )
+  console.log('Deploying contracts to localhost for Unit Test ...')
 
-  const supply = ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
-
-  //Token20
-  const Token = await ethers.getContractFactory("Token20")
-  const kmcToken = await Token.deploy()
-  expect( kmcToken !== undefined )
-
-  await kmcToken.initialize(supply)
-  console.log("KmcToken address:", kmcToken.address)
-  console.log("KmcToken supply:", await kmcToken.totalSupply())
-
-  //Token1155
-  const Token1155 = await ethers.getContractFactory("Token1155")
-  const token1155 = await Token1155.deploy()
-  expect( token1155 !== undefined )
-
-  await token1155.initialize("")
-  console.log("token1155 address:", token1155.address)
-
-  //kuggamax
-  console.log("Deploying Kuggamax contract ...")
-  const Kuggamax = await ethers.getContractFactory("Kuggamax")
-  const kuggamax = await Kuggamax.deploy()
-  expect( kuggamax !== undefined )
-
-  if (await expect(kuggamax.initialize(
-    kmcToken.address,
-    token1155.address,
-    deploymentParams.LAB_DEPOSIT,
-    deploymentParams.ITEM_DEPOSIT,
-    deploymentParams.MINT_DEPOSIT,
-  )).to.not.reverted) {
-    console.log('Kuggamax initialize() succeed')
-  } else {
-    console.log('Kuggamax initialize() failed')
-  }
-
-  console.log('')
-  console.log('Kuggamax deployed. Address:', kuggamax.address)
-  console.log("KMC in Kuggamax:", ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
-  console.log('')
-
-  const accounts = await ethers.getSigners()
-  const chainId = await kuggamax.signer.getChainId()
-
-  console.log('account0:' + accounts[0].address)
-  console.log('account1:' + accounts[1].address)
-
-  //transfer token1155's ownership, from deployer to Kuggamax contract
-  await token1155.transferOwnership(kuggamax.address)
-  expect(await token1155.owner()).to.be.eq(kuggamax.address)
-  console.log('Transfer token1155 ownership to Kuggamax contract succeed')
+  const {kuggamax, kmcToken, accounts, chainId} = await deployAllByProxy(false, hre)
 
   //Create a lab, and a item for test
   await createLabItem(kuggamax, kmcToken, accounts)
@@ -104,37 +50,44 @@ const deployKuggmaxToken20 = async () => {
 }
 
 const createLabItem = async (kuggamax, kmcToken, accounts) => {
-  const caller = accounts[0]
-  const owner = accounts[1]
+  const admin = accounts[0]
+  const user = accounts[1]
+
+  const labAssocId = Number(await kuggamax.getLabCount()) + 1
+  console.log('')
+  console.log('---------------------------------------')
+  console.log('create Lab & Item for test-', labAssocId)
 
   let deposit = BigNumber.from(deploymentParams.LAB_DEPOSIT).add(deploymentParams.ITEM_DEPOSIT ).add(deploymentParams.MINT_DEPOSIT).toString()
   console.log('total deposit:', deposit)
 
-  if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-    if (!await hasEnoughAllowance(kmcToken, owner.address, kuggamax, deposit)) {
-      await giveAllowance(kmcToken, owner, kuggamax, deposit)
-    }
-    kmcToken.connect(caller).transfer(owner.address, deposit)
+  if (!await hasEnoughTokens(kmcToken, user.address, deposit)) {
+    console.log('no enough kmc, transfer..')
+    await kmcToken.connect(admin).transfer(user.address, deposit)
   }
-
-  const labAssocId = Number(await kuggamax.getLabCount()) + 1
-  console.log('labAssocId:', labAssocId)
+  if (!await hasEnoughAllowance(kmcToken, user.address, kuggamax, deposit)) {
+    console.log('no enough kmc allowance, approve..')
+    await giveAllowance(kmcToken, user, kuggamax, deposit)
+  }
 
   const title = 'Lab-' + (labAssocId - 1)
   const description = 'Description of ' + title
-  await kuggamax.connect(owner).createLab(labAssocId, title, description)
+  await kuggamax.connect(user).createLab(labAssocId, title, description)
 
   const labId = await kuggamax.getLabCount() - 1
-  expect(labId).to.be.gt(0)
+  expect(labId).to.be.eq(labAssocId - 1)
 
   console.log('Lab created, labId:', labId)
 
+  const prevItemId = await kuggamax.getItemCount() - 1
   const hash = sha256(randomBytes(32))
-  await kuggamax.connect(owner).createItem(labId, hash)
+  await kuggamax.connect(user).createItem(labId, hash)
   const itemId = await kuggamax.getItemCount() - 1
-  expect(itemId).to.be.gte(0)
+  expect(itemId).to.be.eq(prevItemId + 1)
 
   console.log('Item created, itemId:', labId)
+  console.log('---------------------------------------')
+  console.log('')
 }
 
 const getSigners = (accounts) => {
@@ -146,20 +99,15 @@ const getSigners = (accounts) => {
   return {caller, owner, otherOne}
 }
 
-describe('Kuggamax Contract', () => {
+describe('================ Kuggamax Contract Test start ==============', () => {
   let name
-  // let kuggamax, kmcToken, accounts, chainId
-  // let caller, owner, spender, otherOne
 
-  before('deploy contracts', async () => {
+  describe('mint-revert', async () => {
+    it('Require fail - the item Token1155 shall not be existed', async () => {
 
-  })
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployForTest)
 
-  describe("mint-revert", async () => {
-    it("Require fail - the item Token1155 shall not be existed", async () => {
       console.log('-------------------------------------------------------------------')
-
-      const {kuggamax, kmcToken, accounts} = await loadFixture(deployKuggmaxToken20)
       const {caller, owner} = getSigners(accounts)
 
       const itemId = await kuggamax.getItemCount() - 1
@@ -182,13 +130,12 @@ describe('Kuggamax Contract', () => {
 
   })
 
-  describe("admin-withdraw-revert", async () => {
-    console.log('admin-withdraw ----------')
+  describe('\nadmin-withdraw-revert', async () => {
 
-    it("Require fail - Not Kuggamax Owner", async () => {
+    it('Require fail - Not Kuggamax Owner', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployForTest)
       const deployer = accounts[0]
       const otherOne = accounts[1]
 
@@ -203,14 +150,13 @@ describe('Kuggamax Contract', () => {
 
   })
 
-  describe("permit-approve-revert", async () => {
+  describe('\npermit-approve-revert', async () => {
     const ONE_DAY_IN_SECS = 24 * 60 * 60
-    console.log('permit approve ----------')
 
-    it("Require fail - Deadline shall be later than block.timestamp", async () => {
+    it('Require fail - Deadline shall be later than block.timestamp', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
       const spender = kuggamax //spender is kuggamax
@@ -230,10 +176,10 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.token20PermitExpiredDeadline)
     })
 
-    it("Require fail - the owner shall be the signature signer", async () => {
+    it('Require fail - the owner shall be the signature signer', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
       const spender = kuggamax //spender is kuggamax
@@ -246,7 +192,7 @@ describe('Kuggamax Contract', () => {
 
       const domain = buildDomain(name, version, chainId, kmcToken.address)
       const types = {
-        Permit: [ //"Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+        Permit: [ //'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
           {name: 'owner', type: 'address'},
           {name: 'spender', type: 'address'},
           {name: 'value', type: 'uint256'},
@@ -274,8 +220,7 @@ describe('Kuggamax Contract', () => {
     })
   })
 
-  describe('permit-create-lab-revert', async () => {
-    console.log('create lab -------')
+  describe('\npermit-create-lab-revert', async () => {
     const types = {
       PermitCreateLab: [  //PermitCreateLab(string title,string description,address owner,uint256 nonce)
         {name: 'title', type: 'string'},
@@ -285,16 +230,16 @@ describe('Kuggamax Contract', () => {
       ]
     }
 
-    it("Require fail - the owner shall be the create lab signature signer", async () => {
+    it('Require fail - the owner shall be the create lab signature signer', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      name = "Kuggamax"
+      name = 'Kuggamax'
       const domain = buildDomain(name, version, chainId, kuggamax.address)
 
-      const title = "Test Lab 1"
+      const title = 'Test Lab 1'
       const desc = 'Description of ' + title
       const nonce = await kuggamax.nonces(owner.address)
       console.log('nonce=', nonce)
@@ -320,16 +265,16 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.permitInvalidSignature)
     })
 
-    it("Require fail - owner shall has enough kmc allowance for permitCreateLab", async () => {
+    it('Require fail - owner shall has enough kmc allowance for permitCreateLab', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      name = "Kuggamax"
+      name = 'Kuggamax'
       const domain = buildDomain(name, version, chainId, kuggamax.address)
 
-      const title = "Test Lab 1"
+      const title = 'Test Lab 1'
       const desc = 'Description of ' + title
       const nonce = await kuggamax.nonces(owner.address)
       console.log('nonce=', nonce)
@@ -357,16 +302,16 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.noEnoughAllowanceForDeposit)
     })
 
-    it("Require fail - owner shall has enough kmc balance for permitCreateLab", async () => {
+    it('Require fail - owner shall has enough kmc balance for permitCreateLab', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      name = "Kuggamax"
+      name = 'Kuggamax'
       const domain = buildDomain(name, version, chainId, kuggamax.address)
 
-      const title = "Test Lab 1"
+      const title = 'Test Lab 1'
       const desc = 'Description of ' + title
       const nonce = await kuggamax.nonces(owner.address)
       console.log('nonce=', nonce)
@@ -402,7 +347,7 @@ describe('Kuggamax Contract', () => {
     })
   })
 
-  describe('permit-create-item-revert', async () => {
+  describe('\npermit-create-item-revert', async () => {
     const types = {
       PermitCreateItem: [  //PermitCreateItem(uint64 labId,bytes32 hash,address owner,uint256 nonce)
         {name: 'labId', type: 'uint64'},
@@ -412,16 +357,16 @@ describe('Kuggamax Contract', () => {
       ]
     }
 
-    it("Require fail - the owner shall be the create item signature signer", async () => {
+    it('Require fail - the owner shall be the create item signature signer', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
       const labId = await kuggamax.getLabCount() - 1
       const itemHash = getRandItemHash(labId)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
       const nonce = await kuggamax.nonces(owner.address)
       const domain = buildDomain(name, version, chainId, kuggamax.address)
       const data = {
@@ -438,16 +383,16 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.permitInvalidSignature)
     })
 
-    it("Require fail - labId shall be valid", async () => {
+    it('Require fail - labId shall be valid', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
       const labId = await kuggamax.getLabCount()
       const itemHash = getRandItemHash(labId)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
       const nonce = await kuggamax.nonces(owner.address)
       const domain = buildDomain(name, version, chainId, kuggamax.address)
       const data = {
@@ -464,10 +409,10 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.invalidLabId)
     })
 
-    it("Require fail - owner must be member of lab", async () => {
+    it('Require fail - owner must be member of lab', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       let {caller, owner, otherOne} = getSigners(accounts)
 
       const labId = await kuggamax.getLabCount() - 1
@@ -480,7 +425,7 @@ describe('Kuggamax Contract', () => {
       owner = otherOne
       otherOne = t
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
       const nonce = await kuggamax.nonces(owner.address)
       const domain = buildDomain(name, version, chainId, kuggamax.address)
       const data = {
@@ -499,7 +444,7 @@ describe('Kuggamax Contract', () => {
 
   })
 
-  describe('permit-mint-revert', async () => {
+  describe('\npermit-mint-revert', async () => {
     const types = {
       PermitMint: [  //PermitMint(uint64 itemId,uint256 amount,address owner,uint256 nonce)
         {name: 'itemId', type: 'uint64'},
@@ -509,13 +454,13 @@ describe('Kuggamax Contract', () => {
       ]
     }
 
-    it("Require fail - the owner shall be the item mint signature signer", async () => {
+    it('Require fail - the owner shall be the item mint signature signer', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
 
       const itemId = await kuggamax.getItemCount() - 1
       const itemAmount = 1
@@ -536,13 +481,13 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.permitInvalidSignature)
     })
 
-    it("Require fail - the itemId shall be smaller than item count", async () => {
+    it('Require fail - the itemId shall be smaller than item count', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
 
       const itemId = await kuggamax.getItemCount() //invalid itemId
       const itemAmount = 1
@@ -563,13 +508,13 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.invalidItemId)
     })
 
-    it("Require fail - the owner shall be the item owner", async () => {
+    it('Require fail - the owner shall be the item owner', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       let {caller, owner, otherOne} = getSigners(accounts)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
 
       const itemId = await kuggamax.getItemCount() - 1
       const itemAmount = 1
@@ -597,13 +542,13 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.notOwnerOfItem)
     })
 
-    it("Require fail - the amount shall be greater than 0", async () => {
+    it('Require fail - the amount shall be greater than 0', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
 
       const itemId = await kuggamax.getItemCount() - 1
       const itemAmount = 0
@@ -624,16 +569,16 @@ describe('Kuggamax Contract', () => {
         .to.be.revertedWith(revertMsg.invalidMintAmount)
     })
 
-    it("Require fail - the item Token1155 shall not be exist", async () => {
+    it('Require fail - the item Token1155 shall not be exist', async () => {
       console.log('-------------------------------------------------------------------')
 
-      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployKuggmaxToken20)
+      const {kuggamax, kmcToken, accounts, chainId} = await loadFixture(deployForTest)
       const {caller, owner, otherOne} = getSigners(accounts)
 
       //create lab2 item2 for permitMint
       await createLabItem(kuggamax, kmcToken, accounts)
 
-      const name = "Kuggamax"
+      const name = 'Kuggamax'
 
       const itemId = await kuggamax.getItemCount() - 1
       const itemAmount = 1

@@ -1,130 +1,72 @@
+const {sha256, randomBytes} = require("ethers/lib/utils")
+const {expect} = require("chai")
+const {anyValue} = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
+const {task} = require("hardhat/config");
 
 const {
   getDeployedKuggamax,
   hasEnoughTokens,
   hasEnoughAllowance,
-  giveAllowance, buildDomain, permitApproveKmc, getRandItemHash,
+  giveAllowance,
+  buildDomain,
+  permitApproveKmc,
+  getRandItemHash,
+  deployAllByProxy,
 } = require('../scripts/utils')
+
 const deploymentParams = require("./deployment-params")
 
-const {ethers} = require('hardhat')
-const Confirm = require("prompt-confirm")
-const {sha256, randomBytes} = require("ethers/lib/utils")
-const {expect} = require("chai")
-const {anyValue} = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
-
-task('kuggamax-deploy', 'Deploys a new instance of kuggamax')
+/* This deployment task is used for test or formal network */
+task("kuggamax-deploy", 'Deploys a new instance of kuggamax to network')
   .setAction(async (_, hre) => {
 
-    /* This deploy task has the same function as './scripts/deploy-kuggamax.js' */
-    const [deployer] = await ethers.getSigners()
+    console.log('Deploying contracts to network:', hre.network.name)
+    const [admin] = await hre.ethers.getSigners()
 
-    console.log("Deploying contracts with the account:", deployer.address)
-    console.log("Deployer balance:", (await deployer.getBalance()).toString())
+    console.log("Deploying contracts with the account:", admin.address)
+    console.log("Deployer native token balance:", (await admin.getBalance()).toString())
 
-    await run('compile')
+    const {kuggamax, kmcToken, accounts, chainId} = await deployAllByProxy(true, hre)
 
-    console.log('Deploying a new Kuggamax to the network ' + hre.network.name)
-    console.log(
-      'Deployment parameters:\n',
-      '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
-      '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
-      '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
-    )
-
-    const prompt = new Confirm('Please confirm that the deployment parameters are correct')
-    const confirmation = await prompt.run()
-
-    if (!confirmation) {
-      return
-    }
-
-    const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
-    const Token = await hre.ethers.getContractFactory("Token20")
-    const token = await Token.deploy(supply)
-
-    console.log("Token address:", token.address)
-    console.log("Token supply:", await token.totalSupply())
-
-    const Kuggamax = await hre.ethers.getContractFactory("Kuggamax")
-
-    console.log("Deploying...")
-    const kuggamax = await Kuggamax.deploy(
-      token.address,
-      deploymentParams.LAB_DEPOSIT,
-      deploymentParams.ITEM_DEPOSIT,
-      deploymentParams.MINT_DEPOSIT,
-    )
-
-    await token.transfer(kuggamax.address, supply)
+    await kmcToken.transfer(kuggamax.address, await kmcToken.totalSupply())
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
-    console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await token.balanceOf(kuggamax.address)))
-    console.log('Deployed Kuggamax to network:' + hre.network.name + ' succeed !!!')
+    console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
+    console.log('Deployed Kuggamax to network:%s, chainId[%d] succeed !!!', hre.network.name, chainId)
+    console.log("Set this address in hardhat.config.js's networks section to use the other tasks")
 
   })
 
+/* This deployment task is used for test tasks, so half of initial KMCs are kept by deployer account for subsequent test task  */
 task('kuggamax-deploy-task', 'Deploys a new instance of kuggamax for tasks')
   .setAction(async (_, hre) => {
-    /* This deploy task is used for test tasks, so half of initial KMCs are kept by deployer account for subsequent test task  */
 
-    // Make sure everything is compiled
-    await run('compile')
+    console.log('Deploying contracts for tasks:')
+    const [admin] = await hre.ethers.getSigners()
 
-    console.log('Deploying a new Kuggamax for tasks to the network ' + hre.network.name)
-    console.log(
-      'Deployment parameters:\n',
-      '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
-      '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
-      '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
-    )
+    console.log("Deploying contracts with the account:", admin.address)
+    console.log("Deployer native token balance:", (await admin.getBalance()).toString())
 
-    const prompt = new Confirm('Please confirm that the deployment parameters are correct')
-    const confirmation = await prompt.run()
+    const {kuggamax, kmcToken, token1155} = await deployAllByProxy(false, hre)
 
-    if (!confirmation) {
-      return
-    }
-
-    const accounts = await hre.ethers.getSigners()
-    const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
-
-    const Token = await hre.ethers.getContractFactory("Token20")
-    const token = await Token.deploy(supply)
-
-    console.log("Token address:", token.address)
-    console.log("Token supply:", await token.totalSupply())
-
-    const Kuggamax = await hre.ethers.getContractFactory("Kuggamax")
-
-    console.log("Deploying...")
-    const kuggamax = await Kuggamax.deploy(
-      token.address,
-      deploymentParams.LAB_DEPOSIT,
-      deploymentParams.ITEM_DEPOSIT,
-      deploymentParams.MINT_DEPOSIT,
-    )
-
-    // const admin = accounts[0] //kuggamax Admin
-    // const user1 = accounts[1] //test user1
-    // const user2 = accounts[2] //test user2
-    // await token.transfer(user1.address, hre.ethers.utils.parseEther('1000'))
-    // await token.transfer(user2.address, hre.ethers.utils.parseEther('1000'))
-    await token.transfer(kuggamax.address, supply.div(2))
+    const supply = await kmcToken.totalSupply()
+    console.log('supply:', supply)
+    await kmcToken.transfer(kuggamax.address, supply.div(2))
 
     console.log('')
     console.log('Kuggamax deployed. Address:', kuggamax.address)
-    console.log("KMC in Kuggamax:", hre.ethers.utils.formatEther(await token.balanceOf(kuggamax.address)))
-    console.log("Set this address in hardhat.config.js's networks section to use the other tasks")
+    console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
+    console.log('Deployed Kuggamax for tasks succeed !!!')
+
   })
 
 task('create-lab', 'Create a new lab')
   .addParam('title', 'The lab title')
   .setAction(async ({ title }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -156,7 +98,7 @@ task('create-item', 'Create a new item')
   .addParam('hash', 'The Hash value of the item', undefined, types.Bytes, true)
   .setAction(async ({ lab, hash }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -189,7 +131,7 @@ task('mint', 'Mint an ERC1155 token for the item')
   .addParam('amount', 'The amount of the token', 100, types.int)
   .setAction(async ({ item, amount }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -217,7 +159,7 @@ task('add-member', 'Adds a member to the specified lab')
   .addParam('member', "The member's address")
   .setAction(async ({ lab,member }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -233,7 +175,7 @@ task('remove-member', 'Removes a member from the specified lab')
   .addParam('member', "The member's address")
   .setAction(async ({lab, member }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -248,7 +190,7 @@ task('deposit', 'Deposit native tokens to get some KMC back')
   .addParam('amount', "The amount of native token to deposit, in ETH")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -284,7 +226,7 @@ task('withdraw', 'Withdraw native tokens by transferring some KMC')
   .addParam('amount', "The amount of native token to withdraw, in KMC")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -306,7 +248,7 @@ task('adminWithdraw', 'Administrator withdraw native tokens from Kuggamax')
   .addParam('amount', "The amount of native tokens to withdraw")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken, itemToken } = await getDeployedKuggamax(hre)
     if (kuggamax === undefined || kmcToken === undefined || itemToken === undefined) {
@@ -388,7 +330,7 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
   .addParam('amount', 'The amount of KMC will be approved to spender')
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken } = await getDeployedKuggamax(hre)
     expect( kmcToken !== undefined )
@@ -469,7 +411,7 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
 task('permit-create-lab', 'Permit someone to execute new lab creation operation instead by verifying signature')
   .addParam('title', 'The lab title')
   .setAction(async ({ title }, hre) => {
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken } = await getDeployedKuggamax(hre)
     expect( kuggamax !== undefined )
@@ -492,7 +434,7 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
     //Just for test!!! if owner has enough kmc balance for create lab, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
       console.log('transfer to owner:', deposit)
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -563,7 +505,7 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
 task('permit-create-item', 'Permit someone to execute new item creation operation instead by verifying signature')
   .addParam('labid', 'The lab Id which the item will be created')
   .setAction(async ({ labid }, hre) => {
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken } = await getDeployedKuggamax(hre)
     expect( kuggamax !== undefined )
@@ -584,7 +526,7 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
     }
     //Just for test!!! if owner has enough kmc balance for create item, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)
@@ -662,7 +604,7 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
   .addParam('itemid', 'The item Id will be minted')
   .addParam('amount', 'The amount of item will be minted')
   .setAction(async ({ itemid, amount }, hre) => {
-    await run('compile')
+    await hre.run('compile')
 
     const { kuggamax, kmcToken } = await getDeployedKuggamax(hre)
     expect( kuggamax !== undefined )
@@ -683,7 +625,7 @@ task('permit-mint', 'Permit someone to execute item mint operation instead by ve
     }
     //Just for test!!! if owner has enough kmc balance for mint, transfer it from accounts[0]
     if (!await hasEnoughTokens(kmcToken, owner.address, deposit)) {
-      kmcToken.connect(caller).transfer(owner.address, deposit)
+      await kmcToken.connect(caller).transfer(owner.address, deposit)
     }
 
     const nonce = await kuggamax.nonces(owner.address)

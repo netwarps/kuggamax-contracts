@@ -2,18 +2,17 @@
 // These functions are meant to be run from tasks, so the
 // RuntimeEnvironment is available in the global scope.
 
-const {ethers, upgrades} = require("hardhat");
-const {randomBytes, sha256} = require("ethers/lib/utils");
-const {expect} = require("chai");
-const {BigNumber} = require("ethers");
-const deploymentParams = require("../tasks/deployment-params");
+const {randomBytes, sha256} = require('ethers/lib/utils');
+const {expect} = require('chai');
+const deploymentParams = require('../tasks/deployment-params');
+const Confirm = require('prompt-confirm');
 
 /**
  * Returns the address of the Kuggamax as set in the config, or undefined if
  * it hasn't been set.
  */
-function getKuggamaxAddress () {
-  return config.networks[network.name].deployedContracts.kuggamax
+function getKuggamaxAddress (hre) {
+  return hre.config.networks[hre.network.name].deployedContracts.kuggamax
 }
 
 /**
@@ -21,7 +20,7 @@ function getKuggamaxAddress () {
  * address hasn't been set in the config.
  */
 async function getDeployedKuggamax (hre) {
-  const kuggamaxAddress = getKuggamaxAddress()
+  const kuggamaxAddress = getKuggamaxAddress(hre)
   if (!kuggamaxAddress) {
     console.error(`Please, set the kuggamax's address in config`)
     return
@@ -68,7 +67,7 @@ const getRandItemHash = (labId) => {
 //permit approve kmc to kuggamax contract
 const permitApproveKmc = async (kmcToken, owner, spender, amount, hre) => {
   const name = await kmcToken.name()
-  const version = "1"
+  const version = '1'
 
   const accounts = await hre.ethers.getSigners()
   const caller = accounts[0] //token20.permit() caller
@@ -81,7 +80,7 @@ const permitApproveKmc = async (kmcToken, owner, spender, amount, hre) => {
 
   const domain = buildDomain(name, version, chainId, kmcToken.address)
   const types = {
-    Permit: [ //"Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    Permit: [ //'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
       {name: 'owner', type: 'address'},
       {name: 'spender', type: 'address'},
       {name: 'value', type: 'uint256'},
@@ -105,41 +104,56 @@ const permitApproveKmc = async (kmcToken, owner, spender, amount, hre) => {
 }
 
 /*
- *
+ * Deploy Kuggamax, Kmc, Token1155 contract by Proxy to support upgrade.
  */
-const deployAllByProxy = async () => {
-
+const deployAllByProxy = async (needConfirm, hre) => {
+  console.log('------------------------------------------------------')
   console.log('Deploying Kuggamax, Token20, Token1155 by Proxy:')
   console.log(
     'Deployment parameters:\n',
-    '  labDeposit:', deploymentParams.LAB_DEPOSIT, '\n',
+    '  labDeposit :', deploymentParams.LAB_DEPOSIT, '\n',
     '  itemDeposit:', deploymentParams.ITEM_DEPOSIT, '\n',
     '  mintDeposit:', deploymentParams.MINT_DEPOSIT, '\n',
+    '  initKmcSupply:', deploymentParams.INITIAL_KMC_SUPLY, '\n'
   )
 
-  const supply = ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
+  await hre.run('compile')
 
-  //Token20
+  const supply = hre.ethers.utils.parseEther(deploymentParams.INITIAL_KMC_SUPLY)
+
+  if (needConfirm === true) {
+    const prompt = new Confirm('Please confirm that the deployment parameters are correct')
+    const confirmation = await prompt.run()
+
+    if (!confirmation) {
+      console.log('You aborted the procedure !! Please check the Deployment Parameters !!')
+      return
+    }
+  }
+
+  //KmcToken
   console.log('Start to deploy kmcToken:')
-  const Token = await ethers.getContractFactory("Token20")
-  const kmcToken = await upgrades.deployProxy(Token, [supply], { initializer: 'initialize' })
+  const Token = await  hre.ethers.getContractFactory('Token20')
+  const kmcToken = await  hre.upgrades.deployProxy(Token, [supply], { initializer: 'initialize' })
   await kmcToken.deployed()
 
-  console.log("KmcToken Proxy address:", kmcToken.address)
-  console.log("KmcToken supply:", await kmcToken.totalSupply())
+  console.log('KmcToken Proxy address:', kmcToken.address)
+  console.log('KmcToken supply:', await kmcToken.totalSupply())
+  console.log('')
 
   //Token1155
   console.log('Start to deploy Token1155:')
-  const Token1155 = await ethers.getContractFactory("Token1155")
-  const token1155 = await upgrades.deployProxy(Token1155, [""])
+  const Token1155 = await hre.ethers.getContractFactory('Token1155')
+  const token1155 = await hre.upgrades.deployProxy(Token1155, [''])
   await token1155.deployed()
 
-  console.log("Token1155 Proxy address:", token1155.address)
+  console.log('Token1155 Proxy address:', token1155.address)
+  console.log('')
 
   //kuggamax
-  console.log("Start to deploy Kuggamax:")
-  const Kuggamax = await ethers.getContractFactory("Kuggamax")
-  const kuggamax = await upgrades.deployProxy(Kuggamax, [
+  console.log('Start to deploy Kuggamax:')
+  const Kuggamax = await  hre.ethers.getContractFactory('Kuggamax')
+  const kuggamax = await  hre.upgrades.deployProxy(Kuggamax, [
     kmcToken.address,
     token1155.address,
     deploymentParams.LAB_DEPOSIT,
@@ -150,35 +164,33 @@ const deployAllByProxy = async () => {
   await kuggamax.deployed()
 
   console.log('Kuggamax Proxy Address:', kuggamax.address)
-  console.log("KMC in Kuggamax:", ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
+  console.log('KMC in Kuggamax:',  hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
   console.log('')
 
-  const accounts = await ethers.getSigners()
+  const accounts = await  hre.ethers.getSigners()
   const chainId = await kuggamax.signer.getChainId()
 
   console.log('account0:' + accounts[0].address)
   console.log('account1:' + accounts[1].address)
+
+  console.log('balance:', await kmcToken.balanceOf(accounts[0].address))
+  expect(await kmcToken.balanceOf(accounts[0].address)).to.equals(supply)
 
   //transfer token1155's ownership, from deployer to Kuggamax contract
   await token1155.transferOwnership(kuggamax.address)
   expect(await token1155.owner()).to.be.eq(kuggamax.address)
   console.log('Transfer token1155 ownership to Kuggamax contract succeed')
 
-  //Create a lab, and a item for test
-  //await createLabItem(kuggamax, kmcToken, accounts)
-
-  return { kuggamax, kmcToken, accounts, chainId }
+  return { kuggamax, kmcToken, token1155, accounts, chainId }
 
 }
 
 module.exports = {
   deployAllByProxy,
   getDeployedKuggamax,
-  getKuggamaxAddress,
   giveAllowance,
   hasEnoughAllowance,
   hasEnoughTokens,
-  getFirstAccount,
   buildDomain,
   getRandItemHash,
   permitApproveKmc

@@ -1,11 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-ethers");
 require('@openzeppelin/hardhat-upgrades');
 require('dotenv').config();
 
-
 require("./tasks/kuggamax-tasks");
-require("./tasks/kuggamax-tasks-permit");
 
 
 const ACCOUNT_PRIVATE_KEY = process.env.ACCOUNT_PRIVATE_KEY;
@@ -62,7 +59,7 @@ module.exports = {
   networks: {
     localhost: {
       deployedContracts: {
-        kuggamax: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
+        kuggamax: '0x0165878A594ca255338adfa4d48449f69242Eb8F'
       }
     },
     // ropsten: {
