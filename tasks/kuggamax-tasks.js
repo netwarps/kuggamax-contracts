@@ -17,30 +17,10 @@ const {
 const deploymentParams = require("./deployment-params")
 
 
-/* This deployment task is used for test or formal network */
-task("kuggamax-deploy", 'Deploys a new instance of kuggamax to network')
-  .setAction(async (_, hre) => {
-
-    console.log('Deploying contracts to network:', hre.network.name)
-    const [admin] = await hre.ethers.getSigners()
-
-    console.log("Deploying contracts with the account:", admin.address)
-    console.log("Deployer native token balance:", (await admin.getBalance()).toString())
-
-    const {kuggamax, kmcToken, accounts, chainId} = await deployAllByProxy(true, hre)
-
-    await kmcToken.transfer(kuggamax.address, await kmcToken.totalSupply())
-
-    console.log('')
-    console.log('Kuggamax deployed. Address:', kuggamax.address)
-    console.log('KMC in Kuggamax:', hre.ethers.utils.formatEther(await kmcToken.balanceOf(kuggamax.address)))
-    console.log('Deployed Kuggamax to network:%s, chainId[%d] succeed !!!', hre.network.name, chainId)
-    console.log("Set this address in hardhat.config.js's networks section to use the other tasks")
-
-  })
-
-/* This deployment task is used for test tasks, so half of initial KMCs are kept by deployer account for subsequent test task  */
-task('kuggamax-deploy-task', 'Deploys a new instance of kuggamax for tasks')
+/**
+ * This task is used to test tasks, so half of initial KMCs are kept by deployer account for subsequent test task.
+ */
+task('deploy-for-task', 'Deploys a new instance of kuggamax for tasks')
   .setAction(async (_, hre) => {
 
     console.log('Deploying contracts for tasks:')
@@ -62,7 +42,7 @@ task('kuggamax-deploy-task', 'Deploys a new instance of kuggamax for tasks')
 
   })
 
-task('create-lab', 'Create a new lab')
+task('create-lab', 'Creates a new lab')
   .addParam('title', 'The lab title')
   .setAction(async ({ title }, hre) => {
     // Make sure everything is compiled
@@ -93,7 +73,7 @@ task('create-lab', 'Create a new lab')
     console.log('Lab created')
   })
 
-task('create-item', 'Create a new item')
+task('create-item', 'Creates a new item')
   .addParam('lab', 'The ID of the lab')
   .addParam('hash', 'The Hash value of the item', undefined, types.Bytes, true)
   .setAction(async ({ lab, hash }, hre) => {
@@ -244,7 +224,7 @@ task('withdraw', 'Withdraw native tokens by transferring some KMC')
   })
 
 
-task('adminWithdraw', 'Administrator withdraw native tokens from Kuggamax')
+task('admin-withdraw', 'Administrator withdraw native tokens from Kuggamax')
   .addParam('amount', "The amount of native tokens to withdraw")
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
@@ -326,7 +306,7 @@ task('debug', 'Shows debug info')
 
 const version = "1"
 
-task('permit-approve', 'Permit someone to execute the KMC Approve operation instead by verifying signature')
+task('permit-approve', 'Permits someone to execute the KMC Approve operation instead by verifying signature')
   .addParam('amount', 'The amount of KMC will be approved to spender')
   .setAction(async ({ amount }, hre) => {
     // Make sure everything is compiled
@@ -408,7 +388,7 @@ task('permit-approve', 'Permit someone to execute the KMC Approve operation inst
   })
 
 
-task('permit-create-lab', 'Permit someone to execute new lab creation operation instead by verifying signature')
+task('permit-create-lab', 'Permits someone to execute new lab creation operation instead by verifying signature')
   .addParam('title', 'The lab title')
   .setAction(async ({ title }, hre) => {
     await hre.run('compile')
@@ -502,7 +482,7 @@ task('permit-create-lab', 'Permit someone to execute new lab creation operation 
   })
 
 
-task('permit-create-item', 'Permit someone to execute new item creation operation instead by verifying signature')
+task('permit-create-item', 'Permits someone to execute new item creation operation instead by verifying signature')
   .addParam('labid', 'The lab Id which the item will be created')
   .setAction(async ({ labid }, hre) => {
     await hre.run('compile')
@@ -600,7 +580,7 @@ task('permit-create-item', 'Permit someone to execute new item creation operatio
 
 
 
-task('permit-mint', 'Permit someone to execute item mint operation instead by verifying signature')
+task('permit-mint', 'Permits someone to execute item mint operation instead by verifying signature')
   .addParam('itemid', 'The item Id will be minted')
   .addParam('amount', 'The amount of item will be minted')
   .setAction(async ({ itemid, amount }, hre) => {

@@ -40,12 +40,12 @@ const deployForTest = async () => {
 
   console.log('Deploying contracts to localhost for Unit Test ...')
 
-  const {kuggamax, kmcToken, accounts, chainId} = await deployAllByProxy(false, hre)
+  const {kuggamax, kmcToken, token1155, accounts, chainId} = await deployAllByProxy(false, hre)
 
   //Create a lab, and a item for test
   await createLabItem(kuggamax, kmcToken, accounts)
 
-  return { kuggamax, kmcToken, accounts, chainId }
+  return { kuggamax, kmcToken, token1155, accounts, chainId }
 
 }
 
@@ -85,7 +85,7 @@ const createLabItem = async (kuggamax, kmcToken, accounts) => {
   const itemId = await kuggamax.getItemCount() - 1
   expect(itemId).to.be.eq(prevItemId + 1)
 
-  console.log('Item created, itemId:', labId)
+  console.log('Item created, itemId:', itemId)
   console.log('---------------------------------------')
   console.log('')
 }
@@ -98,6 +98,11 @@ const getSigners = (accounts) => {
 
   return {caller, owner, otherOne}
 }
+
+const newToken20Name = 'Token20V2'
+const newToken1155Name = 'Token1155V2'
+const newKuggamaxName = 'KuggamaxV2'
+
 
 describe('================ Kuggamax Contract Test start ==============', () => {
   let name
@@ -583,7 +588,7 @@ describe('================ Kuggamax Contract Test start ==============', () => {
       const itemId = await kuggamax.getItemCount() - 1
       const itemAmount = 1
       const nonce = await kuggamax.nonces(owner.address)
-
+      console.log('itemId:', itemId)
       expect(itemId >= 0)
 
       const domain = buildDomain(name, version, chainId, kuggamax.address)
@@ -616,6 +621,101 @@ describe('================ Kuggamax Contract Test start ==============', () => {
         .to.be.revertedWith(revertMsg.itemTokenExisting)
     })
 
+  })
+
+  describe('\nupgrade-test', async () => {
+    it('upgrade Token20 - upgrade and check old data', async () => {
+
+      const {kuggamax, kmcToken, accounts} = await loadFixture(deployForTest)
+
+      console.log('-------------------------------------------------------------------')
+
+      const admin = accounts[0]
+      const user1 = accounts[1]
+
+      const amount = ethers.utils.parseEther('2')
+      await kmcToken.transfer(user1.address, amount, { from: admin.address })
+
+      const oldSupply = await kmcToken.totalSupply()
+      const oldAdminBalance = await kmcToken.balanceOf(admin.address)
+      const oldUser1Balance = await kmcToken.balanceOf(user1.address)
+
+      console.log('amount=', amount)
+      console.log('old supply :', oldSupply)
+      console.log('old admin balance:', oldAdminBalance)
+      console.log('old user1 balance:', oldUser1Balance)
+
+      const NewKmcToken = await ethers.getContractFactory(newToken20Name)
+      const newKmcToken = await hre.upgrades.upgradeProxy(kmcToken.address, NewKmcToken)
+
+      console.log('version:', await newKmcToken.version())
+      await newKmcToken.setVersion('2', {from: admin.address})
+      expect(await newKmcToken.version()).to.equal('2')
+      expect(await newKmcToken.totalSupply()).to.equal(oldSupply)
+
+      const adminBalance = await newKmcToken.balanceOf(admin.address)
+      const user1Balance = await newKmcToken.balanceOf(user1.address)
+
+      console.log('new admin balance:', adminBalance)
+      console.log('new user1 balance:', user1Balance)
+
+      expect(user1Balance).to.eq(oldUser1Balance)
+      expect(adminBalance).to.equal(oldAdminBalance)
+      expect(oldAdminBalance.sub(adminBalance)).to.eq(user1Balance.sub(oldUser1Balance))
+
+      console.log('old kmcToken proxy addr:', kmcToken.address)
+      console.log('new kmcToken proxy addr:', newKmcToken.address)
+      expect(newKmcToken.address).to.equal(kmcToken.address)
+    })
+
+    it('upgrade Token1155 - upgrade and check old data', async () => {
+      const {kuggamax, token1155, accounts} = await loadFixture(deployForTest)
+
+      console.log('-------------------------------------------------------------------')
+
+      const admin = accounts[0]
+      const user1 = accounts[1]
+
+      const itemId = await kuggamax.getItemCount() - 1
+      const amount = 10
+      await kuggamax.connect(user1).mint(itemId, amount)
+
+      const NewToken1155 = await ethers.getContractFactory(newToken1155Name)
+      const newToken1155 = await hre.upgrades.upgradeProxy(token1155.address, NewToken1155)
+
+      console.log('old token1155 proxy addr:', token1155.address)
+      console.log('new token1155 proxy addr:', newToken1155.address)
+      expect(newToken1155.address).to.equal(token1155.address)
+
+      console.log('version:', await newToken1155.version())
+
+      expect(await newToken1155.totalSupply(itemId)).to.equal(amount)
+      expect(await newToken1155.balanceOf(user1.address, itemId)).to.equal(amount)
+    })
+
+    it('upgrade Kuggamax - upgrade and check old data', async () => {
+      const {kuggamax, token1155, accounts} = await loadFixture(deployForTest)
+
+      console.log('-------------------------------------------------------------------')
+
+      const admin = accounts[0]
+      const user1 = accounts[1]
+
+      const NewKuggamax = await ethers.getContractFactory(newKuggamaxName)
+      const newKuggamax = await hre.upgrades.upgradeProxy(kuggamax.address, NewKuggamax)
+
+      console.log('old kuggamax proxy addr:', kuggamax.address)
+      console.log('new kuggamax proxy addr:', newKuggamax.address)
+      expect(newKuggamax.address).to.equal(kuggamax.address)
+
+      console.log('version:', await newKuggamax.version())
+      await newKuggamax.setVersion('2.1', {from: admin.address})
+      expect(await newKuggamax.version()).to.equal('2.1')
+      console.log('version:', await newKuggamax.version())
+
+      expect(await newKuggamax.getLabCount()).to.equal(2)
+      expect(await newKuggamax.getItemCount()).to.equal(2)
+    })
   })
 
 })

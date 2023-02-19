@@ -7,6 +7,10 @@ const {expect} = require('chai');
 const deploymentParams = require('../tasks/deployment-params');
 const Confirm = require('prompt-confirm');
 
+let deployedKuggamaxName = 'Kuggamax'
+let deployedToken20Name = 'Token20'
+let deployedToken1155Name = 'Token1155'
+
 /**
  * Returns the address of the Kuggamax as set in the config, or undefined if
  * it hasn't been set.
@@ -25,12 +29,28 @@ async function getDeployedKuggamax (hre) {
     console.error(`Please, set the kuggamax's address in config`)
     return
   }
-  const kuggamax = await hre.ethers.getContractAt('Kuggamax', kuggamaxAddress)
+  if (deployedKuggamaxName === undefined) {
+    deployedKuggamaxName = 'Kuggamax'
+    console.log('set default kuggamax name:', deployedKuggamaxName)
+  }
+  if (deployedToken20Name === undefined) {
+    deployedToken20Name = 'Token20'
+    console.log('set default token20 name:', deployedToken20Name)
+  }
+  if (deployedToken1155Name === undefined) {
+    deployedToken1155Name = 'Token1155'
+    console.log('set default name token1155:', deployedToken1155Name)
+  }
+  console.log('Deployed Kuggamax name:', deployedKuggamaxName)
+  console.log('Deployed Token20 name:', deployedToken20Name)
+  console.log('Deployed Token1155 name:', deployedToken1155Name)
+
+  const kuggamax = await hre.ethers.getContractAt(deployedKuggamaxName, kuggamaxAddress)
   const erc20Address = await kuggamax.kuggaToken()
-  //const kmcToken = await hre.ethers.getContractAt('IERC20', erc20Address)
-  const kmcToken = await hre.ethers.getContractAt('Token20', erc20Address)
+
+  const kmcToken = await hre.ethers.getContractAt(deployedToken20Name, erc20Address)
   const erc1155Address = await kuggamax.kugga1155()
-  const itemToken = await hre.ethers.getContractAt('Token1155', erc1155Address)
+  const itemToken = await hre.ethers.getContractAt(deployedToken1155Name, erc1155Address)
   return { kuggamax, kmcToken, itemToken }
 }
 
@@ -101,6 +121,18 @@ const permitApproveKmc = async (kmcToken, owner, spender, amount, hre) => {
   await kmcToken.connect(caller).permit(owner.address, spender.address, kmcAmount, maxDeadline, v, r, s)
 
   expect(await kmcToken.allowance(owner.address, spender.address)).to.be.equal(kmcAmount)
+}
+
+
+
+function setDeployedKuggamaxName (name) {
+  deployedKuggamaxName = name
+}
+function setDeployedToken20Name (name) {
+  deployedToken20Name = name
+}
+function setDeployedToken1155Name (name) {
+  deployedToken1155Name = name
 }
 
 /*
@@ -193,5 +225,8 @@ module.exports = {
   hasEnoughTokens,
   buildDomain,
   getRandItemHash,
-  permitApproveKmc
+  permitApproveKmc,
+  setDeployedKuggamaxName,
+  setDeployedToken20Name,
+  setDeployedToken1155Name,
 }
