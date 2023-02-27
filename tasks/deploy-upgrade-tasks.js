@@ -161,7 +161,11 @@ task("upgrade-test", 'Tests the contract after upgrading a specified contract to
     const [admin] = await hre.ethers.getSigners()
 
     console.log('kmcToken version:', await kmcToken.version())
+    await kmcToken.setVersion('v2')
+    console.log('kmcToken version:', await kmcToken.version())
     console.log('itemToken total supply:', await itemToken.totalSupply(admin.address))
+    await kuggamax.setVersion('v2')
     console.log('kuggamax version:', await kuggamax.version())
+    // console.log('kuggamax getX():', await kuggamax.getX())
     console.log('\nTest contract succeed !!\n')
   })
